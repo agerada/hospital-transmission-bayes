@@ -8,10 +8,19 @@ globals
   ;;toilet-cleaning-rate ;; times per 24 ticks toilet cleaned
   ;;toilet-frequenting-rate ;; times per 24 ticks toilet needed
   ;;community-colonisation-rate
-  ;;discharge-rate ;; risk per 24 ticks that patient is discharge
+  ;;antibiotic-prescription-rate
+  ;;antibiotic-effect
+  ;;random-colonisation-thresh
   total-patients-admitted
   total-colonised
+  total-hospital-infections
   wards-per-row
+  current-inpatients ;; current number of inpatients
+  current-colonised
+  current-community-infections
+  current-hospital-infections
+  admission-durations
+  ;;amission-days
 ]
 
 breed [patients patient]
@@ -20,9 +29,9 @@ patients-own
 [
   community-infection?
   hospital-infection?
-  on-abx?
-  abx-ticks-left
+  antibiotic-treated?
   colonised?
+  admission-tick
 ]
 
 patches-own
@@ -36,26 +45,30 @@ patches-own
 
 to setup
   clear-all
+  reset-ticks
   set wards-per-row sqrt wards-total
   resize-world 0 - (wards-total * 5) (wards-total * 5) 0 - (wards-total * 5) (wards-total * 5)
   ;;set bay-proportion 0.4
   set ward-outline []
+  set admission-durations []
   ;;set toilet-frequenting-rate 2
   ;;set toilet-contamination-effect 0.2
   ;;set community-colonisation-rate 0.1
-  ;;set discharge-rate 0.2
   ;;set toilet-cleaning-effect 0.9
   ;;set toilet-cleaning-rate 2
   set total-patients-admitted 0
   set total-colonised 0
   setup-grid
   populate-patients
-  reset-ticks
 end
 
 to go
   update-patients
   clean-toilets
+  set current-community-infections count patients with [ community-infection? ]
+  set current-hospital-infections count patients with [ hospital-infection? ]
+  set current-inpatients count patients
+  set current-colonised count patients with [ community-infection? or hospital-infection? ]
   tick
 end
 
@@ -203,7 +216,7 @@ to send-all-toilet
 
     ask patients [
     ifelse [toilet?] of self = false
-    [ if random-float 1 < (toilet-frequenting-rate / 24)
+    [ if random-float 1 < ( ( random-poisson toilet-frequenting-rate ) / 24)
       [ move-to one-of patches with [ toilet? = true and ward = [ward] of myself and
         bed-number = [bed-number] of myself] ]
     ]
@@ -241,17 +254,31 @@ to update-patients
     if colonised? != true and toilet? = true
     [ if random-float 1 < toilet-contamination
       [ set colonised? true
-      set total-colonised total-colonised + 1]
+        set hospital-infection? true
+        set total-hospital-infections total-hospital-infections + 1
+        set total-colonised total-colonised + 1]
     ]
   ]
   ask patients [ ifelse colonised? = true [ set color red ] [ set color green ] ]
 
   ;; discharge some patients and replace with new admissions
-  ask patients [ if random-float 1 < (discharge-rate / 24)
+  ask patients [ if ticks - admission-tick > random-poisson admission-days
     [
       ask patch-here [make-patient]
-    die]
+      discharge-patient
+    ]
   ]
+
+  ;; see if patients get randomly colonised
+  ask patients [ if random-float ( antibiotic-effect * ( bool-to-int antibiotic-treated? ) ) > random-colonisation-thresh
+    [
+      set colonised? true
+      set hospital-infection? true
+      set total-hospital-infections total-hospital-infections + 1
+      set total-colonised total-colonised + 1
+    ]
+  ]
+
 
 end
 
@@ -260,6 +287,7 @@ to contaminate-toilet [ t ]
 end
 
 to make-random-colonised [ p ]
+  ;; unused
   ask patients [ ifelse random-float 1 < p
     [
       set colonised? true
@@ -282,13 +310,25 @@ to make-patient
           ifelse random-float 1 < community-colonisation-rate
           [
             set colonised? true
+            set community-infection? true
+            set total-colonised total-colonised + 1
             set color red
           ]
           [
             set colonised? false
+            set community-infection? false
             set color green
           ]
+          ifelse random-float 1 < antibiotic-prescription-rate
+    [
+      set antibiotic-treated? true
+    ]
+    [
+      set antibiotic-treated? false
+    ]
     set total-patients-admitted total-patients-admitted + 1
+    set hospital-infection? false
+    set admission-tick ticks
         ]
 end
 
@@ -299,12 +339,23 @@ to clean-toilets
     [ set toilet-contamination toilet-contamination - (toilet-contamination * toilet-cleaning-effect) ]
   ]
 end
+
+to discharge-patient
+  ;; discharge patient
+  ;; call this procedure from within an ask patch
+  set admission-durations lput ( ticks - admission-tick ) admission-durations
+  die
+end
+
+to-report bool-to-int [ b ]
+  ifelse b [ report 1 ] [ report 0 ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 262
 10
-762
-511
+2202
+1951
 -1
 -1
 12.0
@@ -317,10 +368,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--20
-20
--20
-20
+-80
+80
+-80
+80
 0
 0
 1
@@ -370,7 +421,7 @@ bedspaces-per-ward
 bedspaces-per-ward
 0
 20
-12.0
+14.0
 1
 1
 NIL
@@ -410,7 +461,7 @@ bay-proportion
 bay-proportion
 0
 1
-0.4
+0.6
 0.1
 1
 NIL
@@ -425,7 +476,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.9
+1.0
 0.05
 1
 NIL
@@ -455,7 +506,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-2.0
+2.7
 0.1
 1
 NIL
@@ -470,7 +521,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.03
+0.08
 0.01
 1
 NIL
@@ -485,7 +536,7 @@ discharge-rate
 discharge-rate
 0
 1
-0.2
+0.85
 0.05
 1
 NIL
@@ -527,8 +578,10 @@ true
 true
 "" ""
 PENS
-"colonised" 1.0 0 -2674135 true "" "plot count turtles with [ colonised? = True ]"
+"colonised" 1.0 0 -2674135 true "" "plot current-colonised"
 "not colonised" 1.0 0 -13840069 true "" "plot count turtles with [ colonised? = False ]"
+"community" 1.0 0 -7500403 true "" "plot current-community-infections"
+"hospital" 1.0 0 -955883 true "" "plot current-hospital-infections"
 
 PLOT
 768
@@ -557,7 +610,67 @@ CHOOSER
 wards-total
 wards-total
 4 9 16 32
+2
+
+SLIDER
+44
+547
+269
+580
+antibiotic-prescription-rate
+antibiotic-prescription-rate
 0
+1
+0.252
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+108
+653
+280
+686
+antibiotic-effect
+antibiotic-effect
+0
+1
+0.146
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+166
+710
+409
+743
+random-colonisation-thresh
+random-colonisation-thresh
+0
+1
+0.096
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+97
+499
+269
+532
+admission-days
+admission-days
+0
+100
+6.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
