@@ -6,8 +6,8 @@ library(abc)
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
 model_path <- "hospital.nlogo"
 out_path <- "out/"
-wards_total <- 4 #16
-bedspaces_per_ward <- 4 #14
+wards_total <- 16
+bedspaces_per_ward <- 14
 
 ##============== pre-outbreak =============##
 
@@ -495,7 +495,7 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "outbreak-end" = list(min=outbreak_end - 90,
                                                  max=outbreak_end + 90,
                                                  qfun='qunif'),
-                           "control_end" = list(min=control_end - 30, 
+                           "control-end" = list(min=control_end - 30, 
                                                 max=control_end + 30,
                                                 qfun='qunif'),
                            "o-toilet-frequenting-rate" = list(min=pre_outbreak_variables[["toilet-frequenting-rate"]]$min,
@@ -526,6 +526,7 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                                                                    max=0.319,
                                                                    qfun='qunif'))
 
+outbreak_variables <- c(outbreak_variables, pre_outbreak_variables)
 
 nl@experiment <- experiment(expname = "outbreak_control",
                             outpath = out_path,
@@ -589,7 +590,7 @@ sumstats <- outbreak_control_sims %>%
 abc_params_outbreak_control <-abc(target = salgado$rates,
                                   param = outbreak_control_sims[params_names_outbreak_control],
                                   sumstat = sumstats,
-                                  tol=0.025,
+                                  tol=0.1,
                                   method="rejection")
 
 # plot
