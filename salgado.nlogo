@@ -21,6 +21,14 @@ globals
   current-hospital-infections
   admission-durations
   ;;amission-days
+
+  b-toilet-frequenting-rate
+  b-toilet-contamination-effect
+  b-toilet-cleaning-effect
+  b-toilet-cleaning-rate
+  b-community-colonisation-rate
+  b-antibiotic-prescription-rate
+
 ]
 
 breed [patients patient]
@@ -51,6 +59,14 @@ to setup
   ;;set bay-proportion 0.4
   set ward-outline []
   set admission-durations []
+
+  set b-toilet-frequenting-rate toilet-frequenting-rate
+  set b-toilet-contamination-effect toilet-contamination-effect
+  set b-toilet-cleaning-effect toilet-cleaning-effect
+  set b-toilet-cleaning-rate toilet-cleaning-rate
+  set b-community-colonisation-rate community-colonisation-rate
+  set b-antibiotic-prescription-rate antibiotic-prescription-rate
+
   ;;set toilet-frequenting-rate 2
   ;;set toilet-contamination-effect 0.2
   ;;set community-colonisation-rate 0.1
@@ -63,23 +79,7 @@ to setup
 end
 
 to go
-  if outbreak? and ticks > outbreak-start
-  [
-    set toilet-frequenting-rate o-toilet-frequenting-rate
-    set toilet-contamination-effect o-toilet-contamination-effect
-    set toilet-cleaning-effect o-toilet-cleaning-effect
-    set toilet-cleaning-rate o-toilet-cleaning-rate
-    set community-colonisation-rate o-community-colonisation-rate
-    set antibiotic-prescription-rate o-antibiotic-prescription-rate
-  ]
-
-  if infection-control? and ticks > control-start
-  [
-    set toilet-cleaning-effect c-toilet-cleaning-effect
-    set toilet-cleaning-rate c-toilet-cleaning-rate
-    set antibiotic-prescription-rate c-antibiotic-prescription-rate
-  ]
-
+  set-variable-parameters
   update-patients
   clean-toilets
   set current-community-infections count patients with [ community-infection? ]
@@ -367,12 +367,54 @@ end
 to-report bool-to-int [ b ]
   ifelse b [ report 1 ] [ report 0 ]
 end
+
+to set-variable-parameters
+  if outbreak?
+  [
+    if ticks > outbreak-start
+    [
+      set toilet-frequenting-rate o-toilet-frequenting-rate
+      set toilet-contamination-effect o-toilet-contamination-effect
+      set toilet-cleaning-effect o-toilet-cleaning-effect
+      set toilet-cleaning-rate o-toilet-cleaning-rate
+      set community-colonisation-rate o-community-colonisation-rate
+      set antibiotic-prescription-rate o-antibiotic-prescription-rate
+    ]
+    if ticks > outbreak-end
+    [
+      set toilet-frequenting-rate b-toilet-frequenting-rate
+      set toilet-contamination-effect b-toilet-contamination-effect
+      set toilet-cleaning-effect b-toilet-cleaning-effect
+      set toilet-cleaning-rate b-toilet-cleaning-rate
+      set community-colonisation-rate b-community-colonisation-rate
+      set antibiotic-prescription-rate b-antibiotic-prescription-rate
+    ]
+  ]
+
+
+  if infection-control?
+  [
+    if ticks > control-start
+    [
+      set toilet-cleaning-effect c-toilet-cleaning-effect
+      set toilet-cleaning-rate c-toilet-cleaning-rate
+      set antibiotic-prescription-rate c-antibiotic-prescription-rate
+    ]
+    if ticks > control-end
+    [
+      set toilet-cleaning-effect b-toilet-cleaning-effect
+      set toilet-cleaning-rate b-toilet-cleaning-rate
+      set antibiotic-prescription-rate b-antibiotic-prescription-rate
+    ]
+  ]
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 736
 10
-2676
-1951
+1568
+843
 -1
 -1
 5.12
@@ -493,7 +535,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.37
+0.5
 0.05
 1
 NIL
@@ -508,7 +550,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-1.0
+4.0
 1
 1
 NIL
@@ -523,7 +565,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-3.2
+1.7
 0.1
 1
 NIL
@@ -604,7 +646,7 @@ antibiotic-prescription-rate
 antibiotic-prescription-rate
 0
 1
-0.42
+0.33
 0.001
 1
 NIL
@@ -619,7 +661,7 @@ antibiotic-effect
 antibiotic-effect
 0
 1
-0.3196
+0.298
 0.001
 1
 NIL
@@ -634,7 +676,7 @@ random-colonisation-thresh
 random-colonisation-thresh
 0
 1
-0.6552
+0.613
 0.001
 1
 NIL
@@ -703,14 +745,14 @@ HORIZONTAL
 
 SLIDER
 245
-286
+321
 420
-319
+354
 o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-3.2
+3.7
 0.1
 1
 NIL
@@ -718,26 +760,11 @@ HORIZONTAL
 
 SLIDER
 245
-321
-449
-354
-o-toilet-contamination-effect
-o-toilet-contamination-effect
-0.01
-1
-0.37
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-244
 356
-444
+449
 389
-o-toilet-cleaning-effect
-o-toilet-cleaning-effect
+o-toilet-contamination-effect
+o-toilet-contamination-effect
 0.01
 1
 0.37
@@ -749,8 +776,23 @@ HORIZONTAL
 SLIDER
 244
 391
-433
+444
 424
+o-toilet-cleaning-effect
+o-toilet-cleaning-effect
+0.01
+1
+0.23
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+244
+426
+433
+459
 o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
@@ -763,14 +805,14 @@ HORIZONTAL
 
 SLIDER
 244
-426
+461
 466
-459
+494
 o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.08
+0.12
 0.01
 1
 NIL
@@ -778,9 +820,9 @@ HORIZONTAL
 
 SLIDER
 243
-461
+496
 483
-494
+529
 o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
@@ -798,7 +840,7 @@ SWITCH
 256
 infection-control?
 infection-control?
-1
+0
 1
 -1000
 
@@ -811,7 +853,7 @@ control-start
 control-start
 0
 10000
-191.0
+100.0
 1
 1
 NIL
@@ -819,14 +861,14 @@ HORIZONTAL
 
 SLIDER
 477
-295
+329
 686
-328
+362
 c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.5
+0.79
 0.01
 1
 NIL
@@ -834,9 +876,9 @@ HORIZONTAL
 
 SLIDER
 480
-331
+365
 668
-364
+398
 c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
@@ -849,15 +891,45 @@ HORIZONTAL
 
 SLIDER
 479
-366
+400
 729
-399
+433
 c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
 0.33
 0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+245
+288
+417
+321
+outbreak-end
+outbreak-end
+1
+10000
+150.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+478
+294
+650
+327
+control-end
+control-end
+1
+10000
+500.0
+1
 1
 NIL
 HORIZONTAL

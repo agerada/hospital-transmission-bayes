@@ -6,8 +6,8 @@ library(abc)
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
 model_path <- "hospital.nlogo"
 out_path <- "out/"
-wards_total <- 16
-bedspaces_per_ward <- 14
+wards_total <- 4 #16
+bedspaces_per_ward <- 4 #14
 
 ##============== pre-outbreak =============##
 
@@ -308,6 +308,138 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
   geom_line(data = sim_mean, aes(x = x, y = m - sd), linetype='dashed')
 
 
+##=========== fine tune pre-outbreak ===================================##
+
+sim_days <- (365 * 3) + 30
+
+nl <- nl(nlversion = "6.2.2",
+         nlpath = netlogo_path,
+         modelpath = model_path,
+         jvmmem = 1024)
+
+pre_outbreak_priors <- abc_params$unadj.values
+pre_outbreak_priors_means <- apply(pre_outbreak_priors, 2, mean)
+pre_outbreak_priors_sd <- apply(pre_outbreak_priors, 2, sd)
+pre_outbreak_priors_lower_sd <- pre_outbreak_priors_means - pre_outbreak_priors_sd
+pre_outbreak_priors_upper_sd <- pre_outbreak_priors_means + pre_outbreak_priors_sd
+
+pre_outbreak_variables <- apply(pre_outbreak_priors, 2, \(x) {
+  list(min=unname(quantile(x, 0.25)),
+       max=unname(quantile(x, 0.75)),
+       qfun='qunif')
+})
+
+nl@experiment <- experiment(expname = "fine_tune",
+                            outpath = out_path,
+                            repetition = 1,
+                            tickmetrics = "true",
+                            idsetup = "setup",
+                            idgo = "go",
+                            runtime = sim_days,
+                            metrics = c("total-colonised",
+                                        "total-patients-admitted",
+                                        "total-hospital-infections",
+                                        "current-community-infections",
+                                        "current-hospital-infections",
+                                        "current-inpatients",
+                                        "current-colonised"),
+                            variables = pre_outbreak_variables,
+                            constants = list("wards-total" = wards_total,
+                                             "bedspaces-per-ward" = bedspaces_per_ward,
+                                             "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
+                                             "admission-days" = 8.3,
+                                             "bay-proportion" = 0.6))
+
+nl@simdesign <- simdesign_lhs(nl,
+                              samples = 100,
+                              nseeds = 1,
+                              precision = 3)
+
+plan(list(sequential, multisession))
+
+results_baseline_fine_tune <- progressr::with_progress(
+  run_nl_all(nl))
+results_baseline_fine_tune_bak <- results_baseline_fine_tune
+results_baseline_fine_tune <- results_baseline_fine_tune %>% 
+  filter(`[step]` > 31)
+
+results_baseline_fine_tune <- results_baseline_fine_tune %>% 
+  group_by(siminputrow) %>% 
+  mutate(date_sim = seq(from = ymd("2002-01-01"),
+                        by = "1 day",
+                        length.out = n()))
+
+results_baseline_rates <- results_baseline_fine_tune %>% 
+  mutate(year = year(date_sim), month = month(date_sim)) %>% 
+  group_by(siminputrow, year, month) %>% 
+  summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
+
+results_baseline_summary <- results_baseline_fine_tune %>% distinct(siminputrow, .keep_all = TRUE) %>% 
+  mutate(siminputrow = siminputrow) %>% 
+  right_join(results_baseline_rates, by=c("siminputrow"))
+
+params_names_pre_outbreak <- names(nl@experiment@variables)
+
+salgado <- read_csv("data/salgado_et_al.csv") %>%
+  mutate(x = seq(ymd('2002-01-01'), by = '1 month', length.out=nrow(.)))
+
+pre_outbreak_data <- salgado %>% 
+  filter(x < ymd("2004-10-01"))
+
+pre_outbreak_sims <- results_baseline_summary %>% 
+  dplyr::select(all_of(params_names_pre_outbreak), siminputrow, month, year, rate) %>% 
+  mutate(date_sim = ymd(paste(year, month, "01", sep="-"))) %>%
+  filter(date_sim < ymd("2004-10-01")) %>% 
+  dplyr::select(!date_sim) %>% 
+  pivot_wider(names_from = c(year, month), values_from = rate,
+              names_prefix = "rate_")
+
+sumstats <- pre_outbreak_sims %>% 
+  ungroup %>% 
+  dplyr::select(starts_with("rate_"))
+
+abc_params <- abc(target = pre_outbreak_data$rates,
+                  param = pre_outbreak_sims[params_names_pre_outbreak],
+                  sumstat = sumstats,
+                  tol=0.2,
+                  method="rejection")
+
+# plot
+long_retained_ss <- abc_params$ss %>% 
+  as_tibble %>% 
+  #slice_sample(n=10) %>% 
+  mutate(i = seq(nrow(.)),
+         type = "sim") %>% 
+  pivot_longer(starts_with("rate_"),
+               names_to = "x",
+               values_to = "rates") %>% 
+  mutate(x = str_remove(x, "rate_")) %>% 
+  mutate(x = str_replace(x, "_", "-")) %>% 
+  mutate(x = paste0(x, "-1")) %>% 
+  mutate(x = ymd(x))
+
+long_observed_ss <- pre_outbreak_data %>% 
+  mutate(type = "obs")
+
+sim_mean <- long_retained_ss %>% 
+  group_by(x) %>% 
+  summarise(m = mean(rates),
+            sd = sd(rates))
+
+abc_params$unadj.values %>% 
+  as_tibble %>% 
+  pivot_longer(cols=everything()) %>% 
+  ggplot(aes(x = value)) + 
+  geom_density() +
+  facet_wrap(~ name, scales='free')
+
+ggplot(long_retained_ss) + geom_line(aes(x = x, y = rates, group = i, color = type)) +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates, color = type))
+
+ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
+  geom_line(data = sim_mean, aes(x = x, y = m)) +
+  geom_line(data = sim_mean, aes(x = x, y = m + sd), linetype='dashed') +
+  geom_line(data = sim_mean, aes(x = x, y = m - sd), linetype='dashed')
 
 ##=========== use variables for pre-outbreak params as well ============##
 
@@ -338,6 +470,13 @@ consts <- c(consts, "control-start" = eicm_start)
 # into simulation this is, then offset by 90 days in the search field
 outbreak_start <- as.numeric(difftime(ymd('2004-10-01'), ymd('2002-01-01'), units = 'days'))
 
+# also need to calculate the end date of the outbreak
+outbreak_end <- as.numeric(difftime(ymd('2005-05-31'), ymd('2002-01-01'), units = 'days'))
+
+# set an end to enhanced control measures, assume these were stepped down 
+# three months after end of outbreak
+control_end <- outbreak_end + 90
+
 pre_outbreak_priors <- abc_params$unadj.values
 pre_outbreak_priors_means <- apply(pre_outbreak_priors, 2, mean)
 pre_outbreak_priors_sd <- apply(pre_outbreak_priors, 2, sd)
@@ -353,6 +492,12 @@ pre_outbreak_variables <- apply(pre_outbreak_priors, 2, \(x) {
 outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                                                    max=outbreak_start + 90,
                                                    qfun='qunif'),
+                           "outbreak-end" = list(min=outbreak_end - 90,
+                                                 max=outbreak_end + 90,
+                                                 qfun='qunif'),
+                           "control_end" = list(min=control_end - 30, 
+                                                max=control_end + 30,
+                                                qfun='qunif'),
                            "o-toilet-frequenting-rate" = list(min=pre_outbreak_variables[["toilet-frequenting-rate"]]$min,
                                                               max=8,
                                                               qfun='qunif'),
