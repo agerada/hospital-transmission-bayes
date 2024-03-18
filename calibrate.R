@@ -583,6 +583,13 @@ outbreak_control_sims <- results_outbreak_control_summary %>%
   pivot_wider(names_from = c(year, month), values_from = rate,
               names_prefix = "rate_")
 
+# try to make sure only parameters compatible with outbreak are kept
+# outbreak_control_sims <- outbreak_control_sims %>% 
+#   ungroup %>% 
+#   dplyr::filter(`o-toilet-contamination-effect` >= `toilet-contamination-effect` & 
+#                   `o-toilet-frequenting-rate` >= `toilet-frequenting-rate` &
+#                   `o-community-colonisation-rate` >= `community-colonisation-rate`)
+
 sumstats <- outbreak_control_sims %>% 
   ungroup %>% 
   dplyr::select(starts_with("rate_"))
@@ -590,8 +597,9 @@ sumstats <- outbreak_control_sims %>%
 abc_params_outbreak_control <-abc(target = salgado$rates,
                                   param = outbreak_control_sims[params_names_outbreak_control],
                                   sumstat = sumstats,
-                                  tol=0.1,
-                                  method="rejection")
+                                  tol=0.05,
+                                  method="rejection",
+                                  transf = "none")
 
 # plot
 long_retained_ss <- abc_params_outbreak_control$ss %>% 
@@ -630,3 +638,109 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
   geom_line(data = sim_mean, aes(x = x, y = m + sd), linetype='dashed') +
   geom_line(data = sim_mean, aes(x = x, y = m - sd), linetype='dashed')
 
+# save params
+abc_params_outbreak_control$unadj.values %>% 
+  t %>% 
+  as.data.frame %>% 
+  write.table(file.path("out", "abc_params.csv"),
+              sep = ",",
+            row.names = TRUE,
+            col.names = FALSE)
+
+##================= simulate using consts only ==================##
+
+sim_days <- (365 * 7) + 30
+
+outbreak_control_model <- "salgado.nlogo"
+
+nl <- nl(nlversion = "6.2.2",
+         nlpath = netlogo_path,
+         modelpath = outbreak_control_model,
+         jvmmem = 1024)
+
+consts <- list("wards-total" = wards_total,
+               "bedspaces-per-ward" = bedspaces_per_ward,
+               "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
+               "admission-days" = 8.3,
+               "bay-proportion" = 0.6)
+
+# set outbreak and control
+consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
+
+estimated_consts <- abc_params_outbreak_control$unadj.values %>%
+  apply(., 2, mean)
+
+estimated_consts <- c(estimated_consts, consts)
+
+nl@experiment <- experiment(expname = "consts_sim",
+                            outpath = out_path,
+                            repetition = 1,
+                            tickmetrics = "true",
+                            idsetup = "setup",
+                            idgo = "go",
+                            runtime = sim_days,
+                            metrics = c("total-colonised",
+                                        "total-patients-admitted",
+                                        "total-hospital-infections",
+                                        "current-community-infections",
+                                        "current-hospital-infections",
+                                        "current-inpatients",
+                                        "current-colonised"),
+                            constants = consts)
+
+nl@simdesign <- simdesign_simple(nl,
+                              nseeds = future::availableCores() * 4)
+
+plan(list(multisession))
+
+consts_sim <- progressr::with_progress(
+  run_nl_all(nl))
+consts_sim_bak <- consts_sim
+consts_sim <- consts_sim %>% 
+  filter(`[step]` > 31)
+
+consts_sim <- consts_sim %>% 
+  group_by(`random-seed`) %>% 
+  mutate(date_sim = seq(from = ymd("2002-01-01"),
+                        by = "1 day",
+                        length.out = n()))
+
+consts_sim_rates <- consts_sim %>% 
+  mutate(year = year(date_sim), month = month(date_sim)) %>% 
+  group_by(`random-seed`, year, month) %>% 
+  summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000) %>% 
+  mutate(date_sim = ymd(paste0(year, "-", month, "-01"))) %>% 
+  ungroup() %>% 
+  dplyr::select(!c(year, month))
+
+
+consts_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  pivot_longer(cols = !`random-seed`, names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`random-seed`))) +
+  geom_line() +
+  guides(color="none")
+
+# pre-outbreak data
+mean(pre_outbreak_data$rates)
+sd(pre_outbreak_data$rates)
+
+# outbreak data
+outbreak_start_date <- ymd("2004-10-01") 
+outbreak_end_date <- ymd("2005-05-31")
+salgado %>% 
+  dplyr::filter(x >= outbreak_start_date & x <= outbreak_end_date) %>% 
+  summarise(across(rates, list(mean = mean, sd = sd, min = min, max = max)))
+
+# simulated data
+consts_sim_rates %>% 
+  dplyr::filter(date_sim < outbreak_start_date) %>% 
+  summarise(across(rate, list(mean = mean, sd = sd)))
+
+consts_sim_rates %>% 
+  dplyr::filter(date_sim >= outbreak_start_date & date_sim <= outbreak_end_date) %>% 
+  summarise(across(rate, list(mean = mean, sd = sd, min = min, max = max)))

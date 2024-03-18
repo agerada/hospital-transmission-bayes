@@ -1,3 +1,5 @@
+extensions [csv]
+
 globals
 [
   admin_patches_per_ward
@@ -407,7 +409,19 @@ to set-variable-parameters
       set antibiotic-prescription-rate b-antibiotic-prescription-rate
     ]
   ]
+end
 
+to read-abc-params
+;  file-open "out/abc_params.csv"
+;  if file-at-end? [stop]
+;  let param-names csv:from-row file-read-line
+  let params csv:from-file "out/abc_params.csv"
+  foreach params [ x ->
+    let param-name (first x)
+    let values (butfirst x)
+    let values-mean precision mean values 3
+    run (word "set " param-name " " values-mean)
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -505,7 +519,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.37
+0.291
 0.05
 1
 NIL
@@ -535,7 +549,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.5
+0.642
 0.05
 1
 NIL
@@ -550,7 +564,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-4.0
+2.001
 1
 1
 NIL
@@ -565,7 +579,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-1.7
+1.607
 0.1
 1
 NIL
@@ -580,7 +594,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.08
+0.039
 0.01
 1
 NIL
@@ -661,7 +675,7 @@ antibiotic-effect
 antibiotic-effect
 0
 1
-0.298
+0.312
 0.001
 1
 NIL
@@ -676,7 +690,7 @@ random-colonisation-thresh
 random-colonisation-thresh
 0
 1
-0.613
+0.635
 0.001
 1
 NIL
@@ -737,7 +751,7 @@ outbreak-start
 outbreak-start
 1
 10000
-74.0
+1018.081
 1
 1
 ticks
@@ -752,7 +766,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-3.7
+2.802
 0.1
 1
 NIL
@@ -767,7 +781,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.37
+0.378
 0.01
 1
 NIL
@@ -782,7 +796,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.23
+0.462
 0.01
 1
 NIL
@@ -797,7 +811,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-1.0
+1.663
 1
 1
 NIL
@@ -812,7 +826,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.12
+0.057
 0.01
 1
 NIL
@@ -827,7 +841,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.42
+0.458
 0.01
 1
 NIL
@@ -868,7 +882,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.79
+0.696
 0.01
 1
 NIL
@@ -883,7 +897,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-4.0
+2.38
 1
 1
 NIL
@@ -898,7 +912,7 @@ c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
-0.33
+0.279
 0.01
 1
 NIL
@@ -913,7 +927,7 @@ outbreak-end
 outbreak-end
 1
 10000
-150.0
+1231.651
 1
 1
 NIL
@@ -928,11 +942,28 @@ control-end
 control-end
 1
 10000
-500.0
+1339.481
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+24
+663
+162
+696
+reset abc params
+read-abc-params
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
