@@ -575,6 +575,12 @@ results_outbreak_control_summary <- results_outbreak_control %>% distinct(siminp
 
 params_names_outbreak_control <- names(nl@experiment@variables)
 
+# keep simulated parameters that fit with outbreak generation
+results_outbreak_control_summary <- results_outbreak_control_summary %>% 
+  dplyr::filter(`o-toilet-contamination-effect` >= `toilet-contamination-effect` &
+                  `o-toilet-frequenting-rate` >= `toilet-frequenting-rate` &
+                  `o-community-colonisation-rate` >= `community-colonisation-rate`)
+
 outbreak_control_sims <- results_outbreak_control_summary %>% 
   dplyr::select(all_of(params_names_outbreak_control), siminputrow, month, year, rate) %>% 
   mutate(date_sim = ymd(paste(year, month, "01", sep="-"))) %>%
@@ -582,13 +588,6 @@ outbreak_control_sims <- results_outbreak_control_summary %>%
   dplyr::select(!date_sim) %>% 
   pivot_wider(names_from = c(year, month), values_from = rate,
               names_prefix = "rate_")
-
-# try to make sure only parameters compatible with outbreak are kept
-# outbreak_control_sims <- outbreak_control_sims %>% 
-#   ungroup %>% 
-#   dplyr::filter(`o-toilet-contamination-effect` >= `toilet-contamination-effect` & 
-#                   `o-toilet-frequenting-rate` >= `toilet-frequenting-rate` &
-#                   `o-community-colonisation-rate` >= `community-colonisation-rate`)
 
 sumstats <- outbreak_control_sims %>% 
   ungroup %>% 
@@ -623,6 +622,17 @@ sim_mean <- long_retained_ss %>%
   summarise(m = mean(rates),
             sd = sd(rates))
 
+# sim_mean <- long_retained_ss %>% 
+#   group_by(x) %>% 
+#   summarise(m = mean(rates),
+#             sd = sd(rates))
+
+sim_mean <- long_retained_ss %>% 
+  group_by(x) %>% 
+  summarise(m = median(rates),
+            q_low = quantile(rates, 0.25),
+            q_high = quantile(rates, 0.75))
+
 abc_params_outbreak_control$unadj.values %>% 
   as_tibble %>% 
   pivot_longer(cols=everything()) %>% 
@@ -633,10 +643,15 @@ abc_params_outbreak_control$unadj.values %>%
 ggplot(long_retained_ss) + geom_line(aes(x = x, y = rates, group = i, color = type)) +
   geom_line(data = long_observed_ss, aes(x = x, y = rates, color = type))
 
+# ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
+#   geom_line(data = sim_mean, aes(x = x, y = m)) +
+#   geom_line(data = sim_mean, aes(x = x, y = m + sd), linetype='dashed') +
+#   geom_line(data = sim_mean, aes(x = x, y = m - sd), linetype='dashed')
+
 ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
   geom_line(data = sim_mean, aes(x = x, y = m)) +
-  geom_line(data = sim_mean, aes(x = x, y = m + sd), linetype='dashed') +
-  geom_line(data = sim_mean, aes(x = x, y = m - sd), linetype='dashed')
+  geom_line(data = sim_mean, aes(x = x, y = q_high), linetype='dashed') +
+  geom_line(data = sim_mean, aes(x = x, y = q_low), linetype='dashed')
 
 # save params
 abc_params_outbreak_control$unadj.values %>% 
@@ -726,21 +741,23 @@ consts_sim_rates %>%
   guides(color="none")
 
 # pre-outbreak data
-mean(pre_outbreak_data$rates)
-sd(pre_outbreak_data$rates)
+median(pre_outbreak_data$rates)
+quantile(pre_outbreak_data$rates, 0.25)
+quantile(pre_outbreak_data$rates, 0.75)
 
 # outbreak data
 outbreak_start_date <- ymd("2004-10-01") 
 outbreak_end_date <- ymd("2005-05-31")
 salgado %>% 
   dplyr::filter(x >= outbreak_start_date & x <= outbreak_end_date) %>% 
-  summarise(across(rates, list(mean = mean, sd = sd, min = min, max = max)))
+  summarise(across(rates, list(median = median, q_low = \(x) quantile(x, 0.25), q_high = \(x) quantile(x, 0.75), min = min, max = max)))
 
 # simulated data
 consts_sim_rates %>% 
   dplyr::filter(date_sim < outbreak_start_date) %>% 
-  summarise(across(rate, list(mean = mean, sd = sd)))
+  summarise(across(rate, list(median = median, q_low = \(x) quantile(x, 0.25), q_high = \(x) quantile(x, 0.75))))
 
 consts_sim_rates %>% 
   dplyr::filter(date_sim >= outbreak_start_date & date_sim <= outbreak_end_date) %>% 
-  summarise(across(rate, list(mean = mean, sd = sd, min = min, max = max)))
+  summarise(across(rate, list(median = median, q_low = \(x) quantile(x, 0.25), q_high = \(x) quantile(x, 0.75), min = min, max = max)))
+

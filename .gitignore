@@ -1,3 +1,10 @@
+# Project specific
+out/
+.DS_Store
+*tmp.nlogo
+paper/**/*.pdf
+paper/**/*.docx
+
 # History files
 .Rhistory
 .Rapp.history
