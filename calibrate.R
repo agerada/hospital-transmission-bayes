@@ -4,7 +4,7 @@ library(tidyverse)
 library(lubridate)
 library(abc)
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
-model_path <- "hospital.nlogo"
+model_path <- "salgado_v0.3_day.nlogo"
 out_path <- "out/"
 wards_total <- 16
 bedspaces_per_ward <- 14
@@ -12,6 +12,7 @@ bedspaces_per_ward <- 14
 ##============== pre-outbreak =============##
 
 sim_days <- (365 * 3) + 30
+sim_hours <- sim_days * 24
 
 nl <- nl(nlversion = "6.2.2",
          nlpath = netlogo_path,
@@ -24,7 +25,7 @@ nl@experiment <- experiment(expname = "baseline_rate",
                             tickmetrics = "true",
                             idsetup = "setup",
                             idgo = "go",
-                            runtime = sim_days,
+                            runtime = sim_hours,
                             metrics = c("total-colonised",
                                         "total-patients-admitted",
                                         "total-hospital-infections",
@@ -40,6 +41,8 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "toilet-cleaning-rate" = list(min=1, max=3, qfun='qunif'),
                                              "random-colonisation-thresh" = list(min=0.01, max=0.99, qfun='qunif')),
                             constants = list("wards-total" = wards_total,
+                                             "outbreak?" = FALSE,
+                                             "infection-control?" = FALSE,
                                              "bedspaces-per-ward" = bedspaces_per_ward,
                                              "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
                                              "admission-days" = 8.3,
@@ -140,7 +143,7 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
 
 sim_days <- (365 * 7) + 30
 
-outbreak_control_model <- "salgado.nlogo"
+outbreak_control_model <- "salgado_v0.3.nlogo"
 
 nl <- nl(nlversion = "6.2.2",
          nlpath = netlogo_path,
