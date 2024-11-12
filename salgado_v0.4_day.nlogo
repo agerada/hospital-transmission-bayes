@@ -1,4 +1,4 @@
-extensions [csv]
+extensions [csv profiler]
 
 globals
 [
@@ -15,6 +15,7 @@ globals
   ;;antibiotic-effect
   ;;random-colonisation-thresh
   ;;amission-days
+  ;;bay-capacity the number of beds in each bay
 
   total-patients-admitted
   total-colonised
@@ -58,6 +59,8 @@ patches-own
 [
   ward
   bed-number
+  bed-capacity
+  bed-availability
   bay?
   toilet?
   toilet-contamination ;; 0 = not contaminanted, 1 = fully contaminated
@@ -99,6 +102,9 @@ to go
   set current-hospital-infections count patients with [ hospital-infection? ]
   set current-inpatients count patients
   set current-colonised count patients with [ community-infection? or hospital-infection? ]
+;  if any? patches with [ bed-availability < 0 ] [
+;    print "here"
+;  ]
   tick
 end
 
@@ -162,11 +168,23 @@ to create-ward [ t w beds ward-color ]
       ifelse random-float 1.0 < bay-proportion
       [
         set bay? true
-        ask neighbors [ set bay? true ]
+        set bed-capacity 4
+        set bed-availability 4
+        ask neighbors [
+          set bay? true
+          set bed-capacity 4
+          set bed-availability 4
+        ]
       ]
       [
         set bay? false
-        ask neighbors [ set bay? false ]
+        set bed-capacity 1
+        set bed-availability 1
+        ask neighbors [
+          set bay? false
+          set bed-capacity 1
+          set bed-availability 1
+        ]
       ]
       set temp-outline (list w bed-number bay?) ;; create temp info for bed
     ]
@@ -204,11 +222,23 @@ to create-ward [ t w beds ward-color ]
         ifelse (random-float 1 <= bay-proportion)
         [
           set bay? true
-          ask neighbors [ set bay? true ]
+          set bed-capacity 4
+          set bed-availability 4
+          ask neighbors [
+            set bay? true
+            set bed-capacity 4
+            set bed-availability 4
+          ]
         ]
         [
           set bay? false
-          ask neighbors [ set bay? false ]
+          set bed-capacity 1
+          set bed-availability 1
+          ask neighbors [
+            set bay? false
+            set bed-capacity 1
+            set bed-availability 1
+          ]
         ]
         set temp-outline (list w bed-number bay?) ;; create temp info for bed
 
@@ -242,64 +272,9 @@ to populate-patients
       [ make-patient ]
     ]
   ]
-
-
-end
-
-to send-all-toilet
-  ask patients [ move-to one-of patches with [ toilet? = true
-  and
-    ward = [ward] of myself
-    and bed-number = [bed-number] of myself]
-  ]
-
-
-    ask patients [
-    ifelse [toilet?] of self = false
-    [ if random-float 1 < ( ( random-poisson toilet-frequenting-rate ) / 24)
-      [ move-to one-of patches with [ toilet? = true and ward = [ward] of myself and
-        bed-number = [bed-number] of myself] ]
-    ]
-    [
-      move-to one-of patches with [ toilet? = false and ward = [ward] of myself and
-        bed-number = [bed-number] of myself]
-    ]
-  ]
-
-    ask patients with [toilet? !=  true] [
-  if random-float 1 < (toilet-frequenting-rate / 24)
-    [ move-to one-of patches with [ toilet? = true and ward = [ward] of myself and
-        bed-number = [bed-number] of myself] ]
-  ]
 end
 
 to update-patients
-;  ask patients [
-;    ;; if not in toilet, check whether needs to go to toilet
-;    ifelse [toilet?] of self != true
-;    [ if random-float 1 < (toilet-frequenting-rate / 24)
-;    [ move-to one-of patches with [ toilet? = true and ward = [ward] of myself and
-;        bed-number = [bed-number] of myself]
-;        contaminate-toilet self]
-;    ]
-;    ;; if in toilet, move out
-;    [ move-to one-of patches with [ toilet? != true and ward = [ward] of myself and
-;      bed-number = [bed-number] of myself
-;      and not any? patients-here] ]
-;  ]
-
-  ;; if on toilet check whether gets colonised
-;  ask patients
-;  [
-;    if colonised? != true and toilet? = true
-;    [ if random-float 1 < toilet-contamination
-;      [ set colonised? true
-;        set hospital-infection? true
-;        set total-hospital-infections total-hospital-infections + 1
-;        set total-colonised total-colonised + 1]
-;    ]
-;  ]
-
   ask patients [
     let n-times-to-toilet random-poisson toilet-frequenting-rate
     repeat random-poisson toilet-frequenting-rate [
@@ -308,28 +283,15 @@ to update-patients
       check-toilet-colonise-patient self
     ]
 
+    if not any? my-bedspaces with [ not any? patients-here ] [
+      set color blue
+      wait 30
+    ]
     move-to one-of my-bedspaces with [ not any? patients-here ]
   ]
 
-  ;; ask patients [ ifelse colonised? = true [ set color red ] [ set color green ] ]
-
   ;; discharge some patients and replace with new admissions
-  ask patients [ if ticks - admission-tick > random-poisson ( admission-days )
-    [
-;      set patients-waiting-move patients with [bay? and colonised?]
-;      let target-xcor xcor
-;      let target-ycor ycor
-;
-;      ifelse any? patients-waiting-move and not bay? [
-;        ask one-of patients-waiting-move [
-;          ask patch-here [ make-patient ]
-;          set color violet
-;          set xcor target-xcor
-;          set ycor target-ycor
-;      ]
-;      ] [
-;      ask patch-here [make-patient]
-;        ]
+  ask patients [ if ticks - admission-tick > random-poisson ( admission-days ) [
       ask patch-here [make-patient]
       discharge-patient
     ]
@@ -337,17 +299,8 @@ to update-patients
 
   ;; see if patients get randomly colonised
   ask patients [
-;    let random-colonisation-effect random-float 30
-;    let random-antibiotic-effect ifelse-value (antibiotic-treated?) [ random-float 30 ] [ 1 ]
-;    show word "colon effect" random-colonisation-effect
-;    show word "colon thresh" random-colonisation-thresh
-;
-;    show word "abx effect" random-antibiotic-effect
-;    show word "abx thresh" antibiotic-effect
-;    if random-colonisation-effect < random-colonisation-thresh or random-antibiotic-effect < antibiotic-effect
-;    if random-float ( antibiotic-effect * ( ifelse-value (antibiotic-treated?) [1] [0] ) ) > 0.5
     let abx-multiplier ifelse-value (antibiotic-treated?) [antibiotic-effect] [1]
-    if random-float 1 < ( ( random-colonisation-thresh * abx-multiplier ) * ( 1 / 10000 ) )
+    if random-float 1 < ( ( random-colonisation * abx-multiplier ) * ( 1 / 10000 ) )
     [
 ;      show "colonising"
       set colonised? true
@@ -424,6 +377,9 @@ to make-patient
     set admission-tick ticks
     set my-toilet one-of all-toilets with [ ward = [ward] of myself and bed-number = [bed-number] of myself]
     set my-bedspaces all-bedspaces with [ ward = [ward] of myself and bed-number = [bed-number] of myself]
+    ask my-bedspaces [
+      set bed-availability bed-availability - 1
+    ]
   ]
 end
 
@@ -440,29 +396,39 @@ end
 to redistribute-patients
   ask patients with [ colonised? ] [
     if bay? [
-      let swap-candidate one-of patients with [ not colonised? and not bay? ]
+      let swap-candidate one-of patients with [ not colonised? and not bay?]
       ifelse swap-candidate = nobody [
-        show "No side room available for me"
+        ;debug show "No side room available for me"
       ] [
-        show (word "Swapping locations with " swap-candidate ", xcor: " [xcor] of swap-candidate ", ycor: " [ycor] of swap-candidate )
-        let my-xcor xcor
-        let my-ycor ycor
+;        set color blue
+        ;debug show (word "Swapping locations with " swap-candidate ", xcor: " [xcor] of swap-candidate ", ycor: " [ycor] of swap-candidate )
+        let tmp-xcor xcor
+        let tmp-ycor ycor
+        let tmp-my-toilet my-toilet
+        let tmp-my-bedspaces my-bedspaces
         set xcor [xcor] of swap-candidate
         set ycor [ycor] of swap-candidate
+        set my-toilet [my-toilet] of swap-candidate
+        set my-bedspaces [my-bedspaces] of swap-candidate
         ask swap-candidate [
-          set xcor my-xcor
-          set ycor my-ycor
+;          set color yellow
+          set xcor tmp-xcor
+          set ycor tmp-ycor
+          set my-toilet tmp-my-toilet
+          set my-bedspaces tmp-my-bedspaces
         ]
       ]
     ]
   ]
 end
 
-
 to discharge-patient
   ;; discharge patient
   ;; call this procedure from within an ask patch
   set admission-durations lput ( ticks - admission-tick ) admission-durations
+  ask my-bedspaces [
+    set bed-availability bed-availability + 1
+  ]
   die
 end
 
@@ -512,9 +478,6 @@ to set-variable-parameters
 end
 
 to read-abc-params
-;  file-open "out/abc_params.csv"
-;  if file-at-end? [stop]
-;  let param-names csv:from-row file-read-line
   let params csv:from-file "out/abc_params.csv"
   foreach params [ x ->
     let param-name (first x)
@@ -527,8 +490,8 @@ end
 GRAPHICS-WINDOW
 736
 10
-1502
-777
+3722
+2997
 -1
 -1
 18.5
@@ -541,10 +504,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--20
-20
--20
-20
+-80
+80
+-80
+80
 0
 0
 1
@@ -594,7 +557,7 @@ bedspaces-per-ward
 bedspaces-per-ward
 0
 20
-7.0
+14.0
 1
 1
 NIL
@@ -619,7 +582,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.05
+0.9
 0.05
 1
 NIL
@@ -649,7 +612,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.69
+0.25
 0.05
 1
 NIL
@@ -664,7 +627,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-1.5
+0.0
 0.1
 1
 NIL
@@ -679,7 +642,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-3.9
+2.3
 0.1
 1
 NIL
@@ -749,7 +712,7 @@ CHOOSER
 wards-total
 wards-total
 4 9 16 32
-0
+2
 
 SLIDER
 21
@@ -769,7 +732,7 @@ HORIZONTAL
 SLIDER
 21
 548
-193
+230
 581
 antibiotic-effect
 antibiotic-effect
@@ -778,7 +741,7 @@ antibiotic-effect
 3.55
 0.1
 1
-NIL
+RR/OR
 HORIZONTAL
 
 SLIDER
@@ -836,7 +799,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1018.081
+1019.0
 1
 1
 ticks
@@ -896,7 +859,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-2.0
+2.1
 0.1
 1
 NIL
@@ -911,7 +874,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.07
+0.08
 0.01
 1
 NIL
@@ -939,7 +902,7 @@ SWITCH
 256
 infection-control?
 infection-control?
-0
+1
 1
 -1000
 
@@ -1034,11 +997,11 @@ NIL
 HORIZONTAL
 
 BUTTON
-24
-663
-162
-696
-reset abc params
+20
+626
+158
+659
+load parameters
 read-abc-params
 NIL
 1
@@ -1053,30 +1016,51 @@ NIL
 SLIDER
 20
 586
-234
+439
 619
-random-colonisation-thresh
-random-colonisation-thresh
+random-colonisation
+random-colonisation
 0
 1000
-6.2
+7.3
 0.1
 1
-NIL
+cases per 10,000 bed days
 HORIZONTAL
 
+TEXTBOX
+481
+203
+631
+221
+Enhanced IPC parameters
+11
+0.0
+1
+
 @#$#@#$#@
-## WHAT IS IT?
+## Introduction
+This is an agent-based model of a hospital environment for the purpose of simulating transmission of faecal-oral transmitted healtchare infection/colonisation. The model is intended to simulate colonisation/infection that transmits mainly through toilet use and is increased with antimicrobial exposure, e.g., Clostridioides difficile infection. It also attempts to optionally simulate an outbreak and control through enhanced infection prevention mechanisms.
 
-(a general understanding of what the model is trying to show or explain)
+## How it works
 
-## HOW IT WORKS
+Firstly, a hospital structure is set up, with multiple wards. Each ward can have a mixture of bays and side rooms. The main difference is that bays can have multiple patients sharing a toilet. At each tick (corresponding to a day in real time), patients are admitted and discharged to maintain full capacity of the hospitals. Toilets are used and contaminated. Patients can get colonised/infected through: 
 
-(what rules the agents use to create the overall behavior of the model)
+* use of a contaminated toilet
+* randomly, which occur more often if the patient is on antimicrobial therapy
 
-## HOW TO USE IT
+Every tick, toilets are cleaned and patients redistributed such that infected/colonised patients are moved to side rooms.
 
-(how to use the model, including a description of each of the items in the Interface tab)
+An outbreak may be triggerred at a particular time point in the simulation. If this happens, some parameters change to encourage increased transmission. Then, an optional period of enhanced infection control practice may be triggerred to deal with the increased transmission.
+
+## How to use it
+
+Placeholder
+
+## Parameter references
+
+* _random-colonisation_: Daneman, 2015 [1] -- Rate of 6.2 cases per 10,000 patient bed days for _C. difficile_.
+
 
 ## THINGS TO NOTICE
 
@@ -1100,7 +1084,7 @@ HORIZONTAL
 
 ## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+1. Daneman N, Guttmann A, Wang X, Ma X, Gibson D, Stukel T. The association of hospital prevention processes and patient risk factors with the risk of Clostridium difficile infection: a population-based cohort study. BMJ Qual Saf. 2015 Jul;24(7):435–43. 
 @#$#@#$#@
 default
 true

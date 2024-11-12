@@ -4,7 +4,7 @@ library(tidyverse)
 library(lubridate)
 library(abc)
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
-model_path <- "salgado_v0.3_day.nlogo"
+model_path <- "salgado_v0.4_day.nlogo"
 out_path <- "out/"
 wards_total <- 16
 bedspaces_per_ward <- 14
@@ -12,7 +12,7 @@ bedspaces_per_ward <- 14
 ##============== pre-outbreak =============##
 
 sim_days <- (365 * 3) + 30
-sim_hours <- sim_days * 24
+# sim_hours <- sim_days * 24
 
 nl <- nl(nlversion = "6.2.2",
          nlpath = netlogo_path,
@@ -25,7 +25,7 @@ nl@experiment <- experiment(expname = "baseline_rate",
                             tickmetrics = "true",
                             idsetup = "setup",
                             idgo = "go",
-                            runtime = sim_hours,
+                            runtime = sim_days,
                             metrics = c("total-colonised",
                                         "total-patients-admitted",
                                         "total-hospital-infections",
@@ -36,10 +36,10 @@ nl@experiment <- experiment(expname = "baseline_rate",
                             variables = list("community-colonisation-rate" = list(min=0.01, max=0.1, qfun='qunif'),
                                              "toilet-contamination-effect" = list(min=0.01, max=0.99, qfun='qunif'),
                                              "toilet-cleaning-effect" = list(min=0.01, max=0.99, qfun='qunif'),
-                                             "toilet-frequenting-rate" = list(min=0.5, max=12, qfun='qunif'),
-                                             "antibiotic-effect" = list(min=0.01, max=0.99, qfun='qunif'),
-                                             "toilet-cleaning-rate" = list(min=1, max=3, qfun='qunif'),
-                                             "random-colonisation-thresh" = list(min=0.01, max=0.99, qfun='qunif')),
+                                             "toilet-frequenting-rate" = list(min=0.5, max=5, qfun='qunif'),
+                                             "antibiotic-effect" = list(min=0.1, max=12, qfun='qunif'),
+                                             "toilet-cleaning-rate" = list(min=0.5, max=5, qfun='qunif'),
+                                             "random-colonisation" = list(min=1, max=20, qfun='qunif')),
                             constants = list("wards-total" = wards_total,
                                              "outbreak?" = FALSE,
                                              "infection-control?" = FALSE,
@@ -49,7 +49,7 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "bay-proportion" = 0.6))
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1000,
+                              samples = 100,
                               nseeds = 1,
                               precision = 3)
 
@@ -143,11 +143,11 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
 
 sim_days <- (365 * 7) + 30
 
-outbreak_control_model <- "salgado_v0.3.nlogo"
+# outbreak_control_model <- "salgado_v0.3.nlogo"
 
 nl <- nl(nlversion = "6.2.2",
          nlpath = netlogo_path,
-         modelpath = outbreak_control_model,
+         modelpath = model_path,
          jvmmem = 1024)
 
 consts <- list("wards-total" = wards_total,
@@ -195,7 +195,7 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                                                              max=0.99,
                                                              qfun='qunif'),
                            "c-toilet-cleaning-rate" = list(min=consts[["toilet-cleaning-rate"]],
-                                                           max=3,
+                                                           max=4,
                                                            qfun='qunif'),
                            "c-antibiotic-prescription-rate" = list(min=0.237,
                                                                    max=0.319,
@@ -220,7 +220,7 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1000,
+                              samples = 100,
                               nseeds = 1,
                               precision = 3)
 
@@ -448,11 +448,11 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
 
 sim_days <- (365 * 7) + 30
 
-outbreak_control_model <- "salgado.nlogo"
+# outbreak_control_model <- "salgado.nlogo"
 
 nl <- nl(nlversion = "6.2.2",
          nlpath = netlogo_path,
-         modelpath = outbreak_control_model,
+         modelpath = model_path,
          jvmmem = 1024)
 
 consts <- list("wards-total" = wards_total,
@@ -523,7 +523,7 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                                                              max=0.99,
                                                              qfun='qunif'),
                            "c-toilet-cleaning-rate" = list(min=pre_outbreak_variables[["toilet-cleaning-rate"]]$min,
-                                                           max=3,
+                                                           max=4,
                                                            qfun='qunif'),
                            "c-antibiotic-prescription-rate" = list(min=0.237,
                                                                    max=0.319,
@@ -549,42 +549,42 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1000,
+                              samples = 100,
                               nseeds = 1,
                               precision = 3)
 
 plan(list(sequential, multisession))
 
-results_outbreak_control <- progressr::with_progress(
+results_outbreak_control_pre_included <- progressr::with_progress(
   run_nl_all(nl))
-results_outbreak_control_bak <- results_outbreak_control
-results_outbreak_control <- results_outbreak_control %>% 
+results_outbreak_control_pre_included_bak <- results_outbreak_control_pre_included
+results_outbreak_control_pre_included <- results_outbreak_control_pre_included %>% 
   filter(`[step]` > 31)
 
-results_outbreak_control <- results_outbreak_control %>% 
+results_outbreak_control_pre_included <- results_outbreak_control_pre_included %>% 
   group_by(siminputrow) %>% 
   mutate(date_sim = seq(from = ymd("2002-01-01"),
                         by = "1 day",
                         length.out = n()))
 
-results_outbreak_control_rates <- results_outbreak_control %>% 
+results_outbreak_control_pre_included_rates <- results_outbreak_control_pre_included %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
   group_by(siminputrow, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
-results_outbreak_control_summary <- results_outbreak_control %>% distinct(siminputrow, .keep_all = TRUE) %>% 
+results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included %>% distinct(siminputrow, .keep_all = TRUE) %>% 
   mutate(siminputrow = siminputrow) %>% 
-  right_join(results_outbreak_control_rates, by=c("siminputrow"))
+  right_join(results_outbreak_control_pre_included_rates, by=c("siminputrow"))
 
 params_names_outbreak_control <- names(nl@experiment@variables)
 
 # keep simulated parameters that fit with outbreak generation
-results_outbreak_control_summary <- results_outbreak_control_summary %>% 
+results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included_summary %>% 
   dplyr::filter(`o-toilet-contamination-effect` >= `toilet-contamination-effect` &
                   `o-toilet-frequenting-rate` >= `toilet-frequenting-rate` &
                   `o-community-colonisation-rate` >= `community-colonisation-rate`)
 
-outbreak_control_sims <- results_outbreak_control_summary %>% 
+outbreak_control_sims <- results_outbreak_control_pre_included_summary %>% 
   dplyr::select(all_of(params_names_outbreak_control), siminputrow, month, year, rate) %>% 
   mutate(date_sim = ymd(paste(year, month, "01", sep="-"))) %>%
   filter(date_sim <= max(salgado$x)) %>% 
@@ -669,11 +669,11 @@ abc_params_outbreak_control$unadj.values %>%
 
 sim_days <- (365 * 7) + 30
 
-outbreak_control_model <- "salgado.nlogo"
+# outbreak_control_model <- "salgado.nlogo"
 
 nl <- nl(nlversion = "6.2.2",
          nlpath = netlogo_path,
-         modelpath = outbreak_control_model,
+         modelpath = model_path,
          jvmmem = 1024)
 
 consts <- list("wards-total" = wards_total,
