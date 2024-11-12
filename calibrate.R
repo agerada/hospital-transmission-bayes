@@ -57,6 +57,8 @@ plan(list(sequential, multisession))
 
 results_baseline <- progressr::with_progress(
   run_nl_all(nl))
+write_rds(results_baseline, file.path("out", "results_baseline.rds"))
+
 results_baseline_bak <- results_baseline
 results_baseline <- results_baseline %>% 
   filter(`[step]` > 31)
@@ -228,6 +230,8 @@ plan(list(sequential, multisession))
 
 results_outbreak_control <- progressr::with_progress(
   run_nl_all(nl))
+write_rds(results_outbreak_control, file.path("out", "results_outbreak_control.rds"))
+
 results_outbreak_control_bak <- results_outbreak_control
 results_outbreak_control <- results_outbreak_control %>% 
   filter(`[step]` > 31)
@@ -362,6 +366,8 @@ plan(list(sequential, multisession))
 
 results_baseline_fine_tune <- progressr::with_progress(
   run_nl_all(nl))
+write_rds(results_baseline_fine_tune, file.path("out", "results_baseline_fine_tune.rds"))
+
 results_baseline_fine_tune_bak <- results_baseline_fine_tune
 results_baseline_fine_tune <- results_baseline_fine_tune %>% 
   filter(`[step]` > 31)
@@ -557,6 +563,8 @@ plan(list(sequential, multisession))
 
 results_outbreak_control_pre_included <- progressr::with_progress(
   run_nl_all(nl))
+write_rds(results_outbreak_control_pre_included, file.path("out", "results_outbreak_control_pre_included.rds"))
+
 results_outbreak_control_pre_included_bak <- results_outbreak_control_pre_included
 results_outbreak_control_pre_included <- results_outbreak_control_pre_included %>% 
   filter(`[step]` > 31)
@@ -713,6 +721,7 @@ plan(list(multisession))
 
 consts_sim <- progressr::with_progress(
   run_nl_all(nl))
+write_rds(consts_sim, file.path("out", "consts_sim.rds"))
 consts_sim_bak <- consts_sim
 consts_sim <- consts_sim %>% 
   filter(`[step]` > 31)
