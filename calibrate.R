@@ -51,7 +51,7 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "bay-proportion" = 0.6))
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 10,
+                              samples = 1000,
                               nseeds = 1,
                               precision = 3)
 
@@ -231,7 +231,7 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 10,
+                              samples = 1000,
                               nseeds = 1,
                               precision = 3)
 
@@ -369,7 +369,7 @@ nl@experiment <- experiment(expname = "fine_tune",
                                              "bay-proportion" = 0.6))
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 10,
+                              samples = 1000,
                               nseeds = 1,
                               precision = 3)
 
@@ -573,7 +573,7 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 10,
+                              samples = 1000,
                               nseeds = 1,
                               precision = 3)
 
