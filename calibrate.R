@@ -3,6 +3,8 @@ library(future)
 library(tidyverse)
 library(lubridate)
 library(abc)
+library(progressr)
+handlers("cli")
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
 model_path <- "salgado_v0.42_day_time.nlogo"
 out_path <- "out/"
