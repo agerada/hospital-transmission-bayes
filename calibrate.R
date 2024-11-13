@@ -4,7 +4,7 @@ library(tidyverse)
 library(lubridate)
 library(abc)
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
-model_path <- "salgado_v0.4_day.nlogo"
+model_path <- "salgado_v0.42_day_time.nlogo"
 out_path <- "out/"
 wards_total <- 16
 bedspaces_per_ward <- 14
@@ -39,7 +39,9 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "toilet-frequenting-rate" = list(min=0.5, max=5, qfun='qunif'),
                                              "antibiotic-effect" = list(min=0.1, max=12, qfun='qunif'),
                                              "toilet-cleaning-rate" = list(min=0.5, max=5, qfun='qunif'),
-                                             "random-colonisation" = list(min=1, max=20, qfun='qunif')),
+                                             "random-colonisation" = list(min=1, max=20, qfun='qunif'),
+                                             "proportion-redistributed" = list(min=0.01, max=0.99, qfun='qunif')
+                                             ),
                             constants = list("wards-total" = wards_total,
                                              "outbreak?" = FALSE,
                                              "infection-control?" = FALSE,
@@ -49,7 +51,7 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "bay-proportion" = 0.6))
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 100,
+                              samples = 10,
                               nseeds = 1,
                               precision = 3)
 
@@ -193,6 +195,9 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "o-antibiotic-prescription-rate" = list(min=0.319,
                                                                    max=0.62, # also from Vesporten 2018
                                                                    qfun='qunif'),
+                           "o-proportion-redistributed" = list(min=0.01,
+                                                               max=consts[["proportion-redistributed"]],
+                                                               qfun='qunif'),
                            "c-toilet-cleaning-effect" = list(min=consts[["toilet-cleaning-effect"]],
                                                              max=0.99,
                                                              qfun='qunif'),
@@ -201,7 +206,11 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                                                            qfun='qunif'),
                            "c-antibiotic-prescription-rate" = list(min=0.237,
                                                                    max=0.319,
-                                                                   qfun='qunif'))
+                                                                   qfun='qunif'),
+                           "c-proportion-redistributed" = list(min=consts[["proportion-redistributed"]],
+                                                               max=0.99,
+                                                               qfun='qunif')
+                           )
 
 
 nl@experiment <- experiment(expname = "outbreak_control",
@@ -222,7 +231,7 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 100,
+                              samples = 10,
                               nseeds = 1,
                               precision = 3)
 
@@ -354,11 +363,13 @@ nl@experiment <- experiment(expname = "fine_tune",
                             constants = list("wards-total" = wards_total,
                                              "bedspaces-per-ward" = bedspaces_per_ward,
                                              "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
+                                             "outbreak?" = FALSE,
+                                             "infection-control?" = FALSE,
                                              "admission-days" = 8.3,
                                              "bay-proportion" = 0.6))
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 100,
+                              samples = 10,
                               nseeds = 1,
                               precision = 3)
 
@@ -525,15 +536,22 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "o-antibiotic-prescription-rate" = list(min=0.319,
                                                                    max=0.62, # also from Vesporten 2018
                                                                    qfun='qunif'),
+                           "o-proportion-redistributed" = list(min=0.01,
+                                                               max=pre_outbreak_variables[["proportion-redistributed"]]$max,
+                                                               qfun='qunif'),
                            "c-toilet-cleaning-effect" = list(min=pre_outbreak_variables[["toilet-cleaning-effect"]]$min,
                                                              max=0.99,
                                                              qfun='qunif'),
                            "c-toilet-cleaning-rate" = list(min=pre_outbreak_variables[["toilet-cleaning-rate"]]$min,
-                                                           max=4,
+                                                           max=pre_outbreak_variables[["toilet-cleaning-rate"]]$max + 2,
                                                            qfun='qunif'),
                            "c-antibiotic-prescription-rate" = list(min=0.237,
                                                                    max=0.319,
-                                                                   qfun='qunif'))
+                                                                   qfun='qunif'),
+                           "c-proportion-redistributed" = list(min=pre_outbreak_variables[["proportion-redistributed"]]$min,
+                                                               max=0.99,
+                                                               qfun='qunif')
+                           )
 
 outbreak_variables <- c(outbreak_variables, pre_outbreak_variables)
 
@@ -555,7 +573,7 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 100,
+                              samples = 10,
                               nseeds = 1,
                               precision = 3)
 
@@ -607,7 +625,7 @@ sumstats <- outbreak_control_sims %>%
 abc_params_outbreak_control <-abc(target = salgado$rates,
                                   param = outbreak_control_sims[params_names_outbreak_control],
                                   sumstat = sumstats,
-                                  tol=0.05,
+                                  tol=0.025,
                                   method="rejection",
                                   transf = "none")
 
@@ -654,7 +672,7 @@ abc_params_outbreak_control$unadj.values %>%
 ggplot(long_retained_ss) + geom_line(aes(x = x, y = rates, group = i, color = type)) +
   geom_line(data = long_observed_ss, aes(x = x, y = rates, color = type))
 
-# ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
+  # ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
 #   geom_line(data = sim_mean, aes(x = x, y = m)) +
 #   geom_line(data = sim_mean, aes(x = x, y = m + sd), linetype='dashed') +
 #   geom_line(data = sim_mean, aes(x = x, y = m - sd), linetype='dashed')

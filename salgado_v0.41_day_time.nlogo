@@ -1,4 +1,4 @@
-extensions [csv profiler]
+extensions [csv profiler time]
 
 globals
 [
@@ -103,6 +103,7 @@ to go
   set current-inpatients count patients
   set current-colonised count patients with [ community-infection? or hospital-infection? ]
   tick
+  time:go-until ticks
 end
 
 to setup-grid
@@ -284,11 +285,11 @@ to update-patients
   ]
 
   ;; discharge some patients and replace with new admissions
-  ask patients [ if ticks - admission-tick > random-poisson ( admission-days ) [
-      ask patch-here [make-patient]
-      discharge-patient
-    ]
-  ]
+;  ask patients [ if ticks - admission-tick > random-poisson ( admission-days ) [
+;;      ask patch-here [make-patient]
+;      discharge-patient
+;    ]
+;  ]
 
   ;; see if patients get randomly colonised
   ask patients [
@@ -373,6 +374,8 @@ to make-patient
     ask my-bedspaces [
       set bed-availability bed-availability - 1
     ]
+
+    time:schedule-event self [ [] -> discharge-patient ]  ( ticks + random-poisson admission-days )
   ]
 end
 
@@ -422,6 +425,7 @@ to discharge-patient
   ask my-bedspaces [
     set bed-availability bed-availability + 1
   ]
+  ask patch-here [ make-patient ]
   die
 end
 
@@ -605,7 +609,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.25
+0.658
 0.05
 1
 NIL
@@ -620,7 +624,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-0.0
+2.834
 0.1
 1
 NIL
@@ -635,7 +639,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-2.3
+5.7
 0.1
 1
 NIL
@@ -650,7 +654,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.02
+0.045
 0.01
 1
 NIL
@@ -716,7 +720,7 @@ antibiotic-prescription-rate
 antibiotic-prescription-rate
 0
 1
-0.27
+0.283
 0.001
 1
 NIL
@@ -731,7 +735,7 @@ antibiotic-effect
 antibiotic-effect
 0
 100
-3.55
+3.276
 0.1
 1
 RR/OR
@@ -746,7 +750,7 @@ admission-days
 admission-days
 0
 100
-8.3
+7.0
 1
 1
 NIL
@@ -792,7 +796,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1019.0
+1011.456
 1
 1
 ticks
@@ -807,7 +811,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-2.802
+6.317
 0.1
 1
 NIL
@@ -822,7 +826,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.39
+0.89
 0.01
 1
 NIL
@@ -837,7 +841,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.462
+0.401
 0.01
 1
 NIL
@@ -852,7 +856,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-2.1
+2.292
 0.1
 1
 NIL
@@ -867,7 +871,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.08
+0.074
 0.01
 1
 NIL
@@ -882,7 +886,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.458
+0.492
 0.01
 1
 NIL
@@ -895,7 +899,7 @@ SWITCH
 256
 infection-control?
 infection-control?
-1
+0
 1
 -1000
 
@@ -923,7 +927,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.69
+0.658
 0.01
 1
 NIL
@@ -938,7 +942,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-1.0
+2.834
 0.1
 1
 NIL
@@ -953,7 +957,7 @@ c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
-0.27
+0.283
 0.01
 1
 NIL
@@ -968,7 +972,7 @@ outbreak-end
 outbreak-end
 1
 10000
-1233.0
+1266.457
 1
 1
 NIL
@@ -983,7 +987,7 @@ control-end
 control-end
 1
 10000
-1339.481
+1337.246
 1
 1
 NIL
@@ -1015,7 +1019,7 @@ random-colonisation
 random-colonisation
 0
 1000
-7.3
+7.399
 0.1
 1
 cases per 10,000 bed days

@@ -1,4 +1,4 @@
-extensions [csv profiler]
+extensions [csv profiler time]
 
 globals
 [
@@ -12,6 +12,7 @@ globals
   ;;toilet-frequenting-rate ;; times per 24 ticks toilet needed
   ;;community-colonisation-rate
   ;;antibiotic-prescription-rate
+  ;;proportion-redistributed
   ;;antibiotic-effect
   ;;random-colonisation-thresh
   ;;amission-days
@@ -35,6 +36,7 @@ globals
   b-toilet-cleaning-rate
   b-community-colonisation-rate
   b-antibiotic-prescription-rate
+  b-proportion-redistributed
 
   all-toilets
   all-bedspaces
@@ -81,6 +83,7 @@ to setup
   set b-toilet-cleaning-rate toilet-cleaning-rate
   set b-community-colonisation-rate community-colonisation-rate
   set b-antibiotic-prescription-rate antibiotic-prescription-rate
+  set b-proportion-redistributed proportion-redistributed
 
   set total-patients-admitted 0
   set total-colonised 0
@@ -94,15 +97,19 @@ to setup
 end
 
 to go
-  set-variable-parameters
-  update-patients
-  clean-toilets
-  redistribute-patients
   set current-community-infections count patients with [ community-infection? ]
   set current-hospital-infections count patients with [ hospital-infection? ]
   set current-inpatients count patients
   set current-colonised count patients with [ community-infection? or hospital-infection? ]
+  set-variable-parameters
+  update-patients
+;  clean-toilets
+  schedule-toilet-use
+  schedule-toilet-clean
+  redistribute-patients
   tick
+;  print time:show-schedule
+  time:go-until ticks
 end
 
 to setup-grid
@@ -272,23 +279,23 @@ to populate-patients
 end
 
 to update-patients
-  ask patients [
-    let n-times-to-toilet random-poisson toilet-frequenting-rate
-    repeat random-poisson toilet-frequenting-rate [
-      move-to my-toilet
-      contaminate-toilet self
-      check-toilet-colonise-patient self
-    ]
-
-    move-to one-of my-bedspaces with [ not any? patients-here ]
-  ]
+;  ask patients [
+;    let n-times-to-toilet random-poisson toilet-frequenting-rate
+;    repeat random-poisson toilet-frequenting-rate [
+;      move-to my-toilet
+;      contaminate-toilet self
+;      check-toilet-colonise-patient self
+;    ]
+;
+;    move-to one-of my-bedspaces with [ not any? patients-here ]
+;  ]
 
   ;; discharge some patients and replace with new admissions
-  ask patients [ if ticks - admission-tick > random-poisson ( admission-days ) [
-      ask patch-here [make-patient]
-      discharge-patient
-    ]
-  ]
+;  ask patients [ if ticks - admission-tick > random-poisson ( admission-days ) [
+;;      ask patch-here [make-patient]
+;      discharge-patient
+;    ]
+;  ]
 
   ;; see if patients get randomly colonised
   ask patients [
@@ -303,8 +310,24 @@ to update-patients
       set total-colonised total-colonised + 1
     ]
   ]
+end
 
+to schedule-toilet-use
+  ask patients [
+    let n-times-to-toilet random-poisson toilet-frequenting-rate
+    repeat random-poisson toilet-frequenting-rate [
+      time:schedule-event self [ [] -> use-toilet self ] ( ticks + random-float 1 )
+    ]
+  ]
+end
 
+to use-toilet [ t ]
+  ask t [
+    move-to my-toilet
+    contaminate-toilet self
+    check-toilet-colonise-patient self
+  ]
+  move-to one-of my-bedspaces with [ not any? patients-here ]
 end
 
 to contaminate-toilet [ t ]
@@ -322,6 +345,15 @@ to check-toilet-colonise-patient [ t ]
         set total-colonised total-colonised + 1
         set color red
       ]
+    ]
+  ]
+end
+
+to schedule-toilet-clean
+  ask all-toilets [
+    let n-times-clean-toilet random-poisson toilet-cleaning-rate
+    repeat n-times-clean-toilet [
+      time:schedule-event self [ [] -> clean-toilets ] ( ticks + random-float 1 )
     ]
   ]
 end
@@ -373,21 +405,23 @@ to make-patient
     ask my-bedspaces [
       set bed-availability bed-availability - 1
     ]
+
+    time:schedule-event self [ [] -> discharge-patient ]  ( ticks + random-poisson admission-days )
   ]
 end
 
 to clean-toilets
-  ask all-toilets
-  [
+;  ask all-toilets
+;  [
 ;    if random-float 1 < (toilet-cleaning-rate / 24)
-    repeat random-poisson toilet-cleaning-rate [
-      set toilet-contamination toilet-contamination - (toilet-contamination * toilet-cleaning-effect)
-    ]
-  ]
+;    repeat random-poisson toilet-cleaning-rate [
+    set toilet-contamination toilet-contamination - (toilet-contamination * toilet-cleaning-effect)
+;    ]
+;  ]
 end
 
 to redistribute-patients
-  ask patients with [ colonised? ] [
+  ask n-of ( proportion-redistributed * current-colonised ) patients with [ colonised? ] [
     if bay? [
       let swap-candidate one-of patients with [ not colonised? and not bay?]
       ifelse swap-candidate = nobody [
@@ -422,6 +456,7 @@ to discharge-patient
   ask my-bedspaces [
     set bed-availability bed-availability + 1
   ]
+  ask patch-here [ make-patient ]
   die
 end
 
@@ -440,6 +475,7 @@ to set-variable-parameters
       set toilet-cleaning-rate o-toilet-cleaning-rate
       set community-colonisation-rate o-community-colonisation-rate
       set antibiotic-prescription-rate o-antibiotic-prescription-rate
+      set proportion-redistributed o-proportion-redistributed
     ]
     if ticks > outbreak-end
     [
@@ -449,6 +485,7 @@ to set-variable-parameters
       set toilet-cleaning-rate b-toilet-cleaning-rate
       set community-colonisation-rate b-community-colonisation-rate
       set antibiotic-prescription-rate b-antibiotic-prescription-rate
+      set proportion-redistributed b-proportion-redistributed
     ]
   ]
 
@@ -460,12 +497,14 @@ to set-variable-parameters
       set toilet-cleaning-effect c-toilet-cleaning-effect
       set toilet-cleaning-rate c-toilet-cleaning-rate
       set antibiotic-prescription-rate c-antibiotic-prescription-rate
+      set proportion-redistributed c-proportion-redistributed
     ]
     if ticks > control-end
     [
       set toilet-cleaning-effect b-toilet-cleaning-effect
       set toilet-cleaning-rate b-toilet-cleaning-rate
       set antibiotic-prescription-rate b-antibiotic-prescription-rate
+      set proportion-redistributed b-proportion-redistributed
     ]
   ]
 end
@@ -575,7 +614,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.9
+0.439
 0.05
 1
 NIL
@@ -605,7 +644,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.25
+0.629
 0.05
 1
 NIL
@@ -620,7 +659,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-0.0
+2.896
 0.1
 1
 NIL
@@ -635,7 +674,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-2.3
+2.591
 0.1
 1
 NIL
@@ -650,7 +689,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.02
+0.045
 0.01
 1
 NIL
@@ -677,9 +716,9 @@ Admission options
 1
 
 PLOT
-247
+207
 10
-572
+494
 190
 Proportion colonised
 NIL
@@ -716,22 +755,22 @@ antibiotic-prescription-rate
 antibiotic-prescription-rate
 0
 1
-0.27
+0.283
 0.001
 1
 NIL
 HORIZONTAL
 
 SLIDER
-21
-548
-230
-581
+22
+587
+231
+620
 antibiotic-effect
 antibiotic-effect
 0
 100
-3.55
+3.276
 0.1
 1
 RR/OR
@@ -746,17 +785,17 @@ admission-days
 admission-days
 0
 100
-8.3
+9.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-22
-531
-172
-549
+23
+570
+173
+588
 Colonisation parameters
 11
 0.0
@@ -779,7 +818,7 @@ SWITCH
 249
 outbreak?
 outbreak?
-1
+0
 1
 -1000
 
@@ -792,7 +831,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1019.0
+1011.456
 1
 1
 ticks
@@ -807,7 +846,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-2.802
+6.317
 0.1
 1
 NIL
@@ -822,7 +861,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.39
+0.752
 0.01
 1
 NIL
@@ -837,7 +876,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.462
+0.401
 0.01
 1
 NIL
@@ -852,7 +891,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-2.1
+2.292
 0.1
 1
 NIL
@@ -867,7 +906,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.08
+0.074
 0.01
 1
 NIL
@@ -882,7 +921,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.458
+0.492
 0.01
 1
 NIL
@@ -895,7 +934,7 @@ SWITCH
 256
 infection-control?
 infection-control?
-1
+0
 1
 -1000
 
@@ -908,7 +947,7 @@ control-start
 control-start
 0
 10000
-99.0
+1592.0
 1
 1
 NIL
@@ -923,7 +962,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.69
+0.658
 0.01
 1
 NIL
@@ -938,7 +977,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-1.0
+2.834
 0.1
 1
 NIL
@@ -953,7 +992,7 @@ c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
-0.27
+0.283
 0.01
 1
 NIL
@@ -968,7 +1007,7 @@ outbreak-end
 outbreak-end
 1
 10000
-1233.0
+1266.457
 1
 1
 NIL
@@ -983,17 +1022,17 @@ control-end
 control-end
 1
 10000
-1339.481
+1337.246
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-20
-626
-158
-659
+21
+665
+159
+698
 load parameters
 read-abc-params
 NIL
@@ -1007,15 +1046,15 @@ NIL
 1
 
 SLIDER
-20
-586
-439
-619
+21
+625
+337
+658
 random-colonisation
 random-colonisation
 0
 1000
-7.3
+7.399
 0.1
 1
 cases per 10,000 bed days
@@ -1030,6 +1069,70 @@ Enhanced IPC parameters
 11
 0.0
 1
+
+PLOT
+494
+10
+694
+160
+Acquisition
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"default" 1.0 0 -6459832 true "" "plot current-community-infections"
+"pen-1" 1.0 0 -14070903 true "" "plot current-hospital-infections"
+
+SLIDER
+21
+536
+230
+569
+proportion-redistributed
+proportion-redistributed
+0
+1
+0.9
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+478
+435
+701
+468
+c-proportion-redistributed
+c-proportion-redistributed
+0
+1
+0.9
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+243
+531
+467
+564
+o-proportion-redistributed
+o-proportion-redistributed
+0
+1
+0.05
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## Introduction
