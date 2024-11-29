@@ -1,0 +1,204 @@
+---
+title: Paper
+authors:
+  - name: Alessandro Gerada
+    affiliation: University of Liverpool
+    roles: writing
+    corresponding: true
+bibliography: references.bib
+---
+
+# Background
+
+```{r, include=FALSE}
+
+# I could not get R code to run before, until I did this:
+# https://github.com/brentthorne/posterdown/issues/42
+
+# to change body font size:
+# change this line in typst-template.typ:
+# set text(font: "STIX Two Text", size: 24pt)
+library(tidyverse)
+library(abc)
+source(file.path("..", "calibrate.R"))
+# load(file.path("..", "out", "calibrate.RData"))
+```
+
+Transmission of potentially pathogenic bacteria under antimicrobial selective pressure has important implications for control of hospital-acquired infection. Examples include *Clostridioides difficile* infection (CDI) and Vancomycin-resistant *Enterococcus*. In addition to patient factors, colonisation risk depends on environmental factors (e.g., surface cleaning), proximity to other colonised patients, and use of antimicrobial agents. To guide infection control strategies, especially during outbreaks, we developed an agent-based simulator and estimated its parameters using data from a CDI outbreak documented by Salgado et al @salgado2009.
+
+# Methods
+
+## Agent-based model
+
+An agent-based model (ABM) was implemented using NetLogo [@wilenskyu.1999]. Briefly, the simulation started by building a virtual hospital with a configurable high-level structure, defined by its number of wards, beds per ward, and proportion of bedspaces sharing toilet facilities. Next, the hospital was populated with patients, each having an infected/colonised or non-infected/colonised state, defined as:
+
+$$
+x_p(t) \epsilon \{0, 1\}
+$$
+
+where:
+
+-   $x_p(t) = 0$ if patient $p$ is not infected/colonised at time $t$,
+-   $x_p(t) = 1$ if patient $p$ is infected/colonised at time $t$. It was assumed that infection/colonisation was not reversible during the simulation, i.e., that infected/colonised patients remained so until discharge. Therefore, in contrast to a traditional susceptible-infected-recovered model [@anderson1991], this model was defined as:
+
+$$
+\frac{dH_S}{dt} = A_S - QH_S(t)H_I(t) - DH_S(t)
+$$
+
+$$
+\frac{dH_I}{dt} = A_I + QH_S(t)H_I(t) - DH_I(t)
+$$
+
+where:
+
+-   $H_S$ is the number of susceptible inpatients,
+-   $H_I$ is the number of infected inpatients,
+-   $A_S$ is the rate of new susceptible admissions,
+-   $A_I$ is the rate of new infected admissions,
+-   $Q$ is the rate of transmission,
+-   $D$ is the rate of patients that are discharged.
+
+The hospital capacity was constantly kept at 100% occupancy, therefore:
+
+$$
+D = A_S + A_I
+$$
+
+Users can run the model interactively using the interface shown in @fig-screenshot. Input parameters included patient factors (e.g., community colonisation rate), population behaviour (e.g., frequency of toilet use), and infection control measures (e.g., toilet cleaning frequency). Risk of infection changed as patients shared use of contaminated toilets, or were prescribed antimicrobial therapy.
+
+## Data
+
+Data from a *Clostridioides difficile* outbreak reported by Salgado et al, was used to calibrate the model.
+
+Rejection sampling approximate Bayesian computation was employed to calibrate the model to the outbreak data. The parameters in @tbl-consts were kept constant during the calibration. Using cases per 1000 patient days as a summary statistic, simulated data were compared to the actual reported rate of nosocomial CDI. Priors were determined from domain expertise or extracted from existing literature. Firstly, the model was calibrated to pre-outbreak data to identify parameters that simulated the baseline rate. Next, we simulated the emergence of an outbreak and its subsequent control by incrementally raising colonisation pressure over time (via increased antimicrobial consumption, toilet use, etc.) and enhancing infection control measures, respectively. Finally, the posterior parameter distributions were used to simulate 20 outbreaks.
+
+| Name                                                       | Value    | Description                                                             | Reference                |
+|------------------|------------------|--------------------|------------------|
+| Baseline (pre-outbreak) antimicrobial prescription rate    | 0.319    | Proportion of patients administered antimicrobials during admission     | @versporten2018          |
+| Admission duration                                         | 8.3 days | Mean of a Poisson distribution                                          | @thehealthfoundation2023 |
+| Proportion of toilets that are shared between \>1 patients | 0.6      | The remaining proportion (0.4) of toilets were dedicated to one patient | N/A                      |
+
+: Parameters that were assumed to be constant during calibration. {#tbl-consts}
+
+![Screenshot of model graphical user interface during a simulation run](./images/screenshot.png){#fig-screenshot height="30%"}
+
+# Results
+
+```{r, echo=FALSE}
+posteriors <- abc_params_outbreak_control$unadj.values
+comm_colonisation <- round(mean(posteriors[, "community-colonisation-rate"] * 100), 2)
+outbreak_colonisation <- round(mean(posteriors[, "o-community-colonisation-rate"] * 100), 2)
+outbreak_antibiotic_rate <- round(mean(posteriors[, "o-antibiotic-prescription-rate"] * 100), 2)
+control_antibiotic_rate <- round(mean(posteriors[, "c-antibiotic-prescription-rate"] * 100), 2)
+```
+
+After calibration, key parameters included: community colonisation rate of `r comm_colonisation`%, rising to `r outbreak_colonisation`% during the outbreak period. Furthermore, the proportion of patients prescribed an antimicrobial during their admission increased from `r consts[["antibiotic-prescription-rate"]] * 100`% to `r outbreak_antibiotic_rate`% during the outbreak; then reduced to `r control_antibiotic_rate`% during the period of enhanced infection control measures. The posterior parameter distributions are shown in @fig-posterior-densities. Simulated data had a pre-outbreak baseline median rate of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
+
+```{r}
+#| echo: false
+#| fig.width: 18
+#| fig.height: 8
+#| warning: false
+#| label: fig-posterior-densities
+#| fig-cap: "Changes in parameters during outbreak and enhanced infection control periods. Density plots show the posterior distributions of key simulation parameters after calibration using approximate Bayesian computation."
+#| fig-subcap:
+#|   - "General parameters"
+#|   - "Toilet-related parameters"
+#| layout-ncol: 1
+abc_params_outbreak_control$unadj.values %>% 
+  as_tibble %>% 
+  dplyr::select(-`outbreak-start`, -`outbreak-end`, -`control-end`,
+                -`antibiotic-effect`,
+                -`random-colonisation`) %>% 
+  dplyr::select(!contains("toilet")) %>% 
+  pivot_longer(cols=everything()) %>%
+  mutate(type = case_when(
+    str_starts(name, "o-") ~ "Outbreak",
+    str_starts(name, "c-") ~ "Control",
+    .default = "Baseline")) %>%
+  mutate(name = str_remove(name, "^o-|^c-")) %>%
+  mutate(name = str_replace_all(name, "-", " ")) %>%
+  mutate(name = str_to_title(name)) %>% 
+  # change type to ordered factor
+  mutate(type = factor(type, levels = c("Baseline", "Outbreak", "Control"))) %>%
+  ggplot(aes(x = value, ..scaled.., fill = type)) +
+  geom_density(alpha = 0.1) +
+  facet_wrap(~name, scales = "free_x") +
+  # remove y axis
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  xlab("Parameter value") + 
+  theme(legend.title = element_blank(),
+        text=element_text(size=24)) + 
+  # manually set colors
+  scale_fill_manual(values = c("Baseline" = "green", "Outbreak" = "red", "Control" = "blue"))
+
+abc_params_outbreak_control$unadj.values %>% 
+  as_tibble %>% 
+  dplyr::select(-`outbreak-start`, -`outbreak-end`, -`control-end`,
+                -`antibiotic-effect`,
+                -`random-colonisation`) %>% 
+  dplyr::select(contains("toilet")) %>% 
+  pivot_longer(cols=everything()) %>%
+  mutate(type = case_when(
+    str_starts(name, "o-") ~ "Outbreak",
+    str_starts(name, "c-") ~ "Control",
+    .default = "Baseline")) %>%
+  mutate(name = str_remove(name, "^o-|^c-")) %>%
+  mutate(name = str_replace_all(name, "-", " ")) %>%
+  mutate(name = str_to_title(name)) %>% 
+  # change type to ordered factor
+  mutate(type = factor(type, levels = c("Baseline", "Outbreak", "Control"))) %>%
+  ggplot(aes(x = value, ..scaled.., fill = type)) +
+  geom_density(alpha = 0.1) +
+  facet_wrap(~name, scales = "free_x") +
+  # remove y axis
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  xlab("Parameter value") + 
+  theme(legend.title = element_blank(),
+        text=element_text(size=24)) + 
+  # manually set colors
+  scale_fill_manual(values = c("Baseline" = "green", "Outbreak" = "red", "Control" = "blue"))
+```
+
+```{r}
+#| echo: false
+#| label: fig-simulated-rates
+#| fig.cap: "Observed and simulated rates of _C. difficile_ infection over the simulated period. Approximate Bayesian computation was used to determine the unobserved parameters of the agent-based model. The red line shows the true observed infection rates. The black solid line shows the mean simulated rates; the dashed lines show the standard deviation."
+#| fig.width: 18
+#| fig.height: 8
+ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
+  geom_line(data = sim_mean, aes(x = x, y = m)) +
+  geom_line(data = sim_mean, aes(x = x, y = q_high), linetype='dashed') +
+  geom_line(data = sim_mean, aes(x = x, y = q_low), linetype='dashed') + 
+  theme(text=element_text(size=24)) +
+  xlab("Date") + ylab("Rate (cases per 1000 patient days)")
+```
+
+```{r}
+#| echo: false
+#| fig.width: 18
+#| fig.height: 8
+#| include: false
+#| message: false
+consts_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(siminputrow, date_sim) %>%
+  summarise(rate = mean(rate)) %>%
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`siminputrow`))) +
+  geom_line() +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
+  guides(color="none")
+```
+
+# Discussion
+
+Repeated simulations using the model generated nosocomial CDI rates that showed a clear outbreak peak, followed by control of colonisation/infection through a change in infection control practice, resembling a real hospital CDI outbreak. The interactive nature of the model can be used for outbreak preparedness by testing out different infection control strategies. In summary, we report a pathogen-agnostic model that can be used to simulate any infection with features such as faecal-oral transmission, colonisation, and antimicrobial selective pressure effects.
