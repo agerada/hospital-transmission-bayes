@@ -1,4 +1,4 @@
-extensions [csv profiler time]
+extensions [csv time]
 
 globals
 [
@@ -510,23 +510,38 @@ to set-variable-parameters
 end
 
 to read-abc-params
-  let params csv:from-file "out/abc_params.csv"
-  foreach params [ x ->
-    let param-name (first x)
-    let values (butfirst x)
-    let values-mean precision mean values 3
-    run (word "set " param-name " " values-mean)
+  let f user-file
+  let params []
+  if f != false [
+    carefully [
+      set params csv:from-file f
+    ] [
+      user-message "The parameter file provided does not appear to be a valid .csv"
+    ]
+  ]
+
+  if not empty? params [
+    carefully [
+      foreach params [ x ->
+        let param-name (first x)
+        let values (butfirst x)
+        let values-mean precision mean values 3
+        run (word "set " param-name " " values-mean)
+      ]
+    ] [
+      user-message "The parameter file provided does not appear to be in a valid format. Please see model info"
+    ]
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-736
+810
 10
-3722
-2997
+2138
+1339
 -1
 -1
-18.5
+8.2
 1
 10
 1
@@ -614,7 +629,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.439
+0.369
 0.05
 1
 NIL
@@ -644,7 +659,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.629
+0.786
 0.05
 1
 NIL
@@ -659,7 +674,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-2.896
+3.239
 0.1
 1
 NIL
@@ -674,7 +689,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-2.591
+1.394
 0.1
 1
 NIL
@@ -689,7 +704,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.045
+0.04
 0.01
 1
 NIL
@@ -733,8 +748,6 @@ true
 PENS
 "colonised" 1.0 0 -2674135 true "" "plot current-colonised"
 "not colonised" 1.0 0 -13840069 true "" "plot count turtles with [ colonised? = False ]"
-"community" 1.0 0 -7171555 true "" "plot current-community-infections"
-"hospital" 1.0 0 -13345367 true "" "plot current-hospital-infections"
 
 CHOOSER
 21
@@ -770,7 +783,7 @@ antibiotic-effect
 antibiotic-effect
 0
 100
-3.276
+3.518
 0.1
 1
 RR/OR
@@ -831,7 +844,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1011.456
+1035.759
 1
 1
 ticks
@@ -846,7 +859,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-6.317
+4.196
 0.1
 1
 NIL
@@ -861,7 +874,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.752
+0.675
 0.01
 1
 NIL
@@ -876,7 +889,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.401
+0.402
 0.01
 1
 NIL
@@ -891,7 +904,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-2.292
+2.786
 0.1
 1
 NIL
@@ -906,7 +919,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.074
+0.07
 0.01
 1
 NIL
@@ -921,7 +934,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.492
+0.461
 0.01
 1
 NIL
@@ -934,7 +947,7 @@ SWITCH
 256
 infection-control?
 infection-control?
-0
+1
 1
 -1000
 
@@ -947,7 +960,7 @@ control-start
 control-start
 0
 10000
-1592.0
+1049.0
 1
 1
 NIL
@@ -962,7 +975,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.658
+0.845
 0.01
 1
 NIL
@@ -977,7 +990,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-2.834
+4.3
 0.1
 1
 NIL
@@ -1007,7 +1020,7 @@ outbreak-end
 outbreak-end
 1
 10000
-1266.457
+1244.733
 1
 1
 NIL
@@ -1022,7 +1035,7 @@ control-end
 control-end
 1
 10000
-1337.246
+1340.303
 1
 1
 NIL
@@ -1033,7 +1046,7 @@ BUTTON
 665
 159
 698
-load parameters
+Load Parameters
 read-abc-params
 NIL
 1
@@ -1054,7 +1067,7 @@ random-colonisation
 random-colonisation
 0
 1000
-7.399
+5.723
 0.1
 1
 cases per 10,000 bed days
@@ -1073,8 +1086,8 @@ Enhanced IPC parameters
 PLOT
 494
 10
-694
-160
+787
+190
 Acquisition
 NIL
 NIL
@@ -1086,19 +1099,19 @@ true
 true
 "" ""
 PENS
-"default" 1.0 0 -6459832 true "" "plot current-community-infections"
-"pen-1" 1.0 0 -14070903 true "" "plot current-hospital-infections"
+"community" 1.0 0 -6459832 true "" "plot current-community-infections"
+"hospital" 1.0 0 -14070903 true "" "plot current-hospital-infections"
 
 SLIDER
-21
-536
-230
-569
+20
+521
+229
+554
 proportion-redistributed
 proportion-redistributed
 0
 1
-0.9
+0.752
 0.01
 1
 NIL
@@ -1113,7 +1126,7 @@ c-proportion-redistributed
 c-proportion-redistributed
 0
 1
-0.9
+0.808
 0.01
 1
 NIL
@@ -1128,7 +1141,7 @@ o-proportion-redistributed
 o-proportion-redistributed
 0
 1
-0.05
+0.426
 0.01
 1
 NIL
@@ -1136,7 +1149,7 @@ HORIZONTAL
 
 @#$#@#$#@
 ## Introduction
-This is an agent-based model of a hospital environment for the purpose of simulating transmission of faecal-oral transmitted healtchare infection/colonisation. The model is intended to simulate colonisation/infection that transmits mainly through toilet use and is increased with antimicrobial exposure, e.g., Clostridioides difficile infection. It also attempts to optionally simulate an outbreak and control through enhanced infection prevention mechanisms.
+This is an agent-based model of a hospital environment for the purpose of simulating transmission of faecal-oral transmitted healtchare infection/colonisation. The model is intended to simulate colonisation/infection that transmits mainly through toilet use and is increased with antimicrobial exposure, e.g., _Clostridioides difficile_ infection. It also attempts to optionally simulate an outbreak and control through enhanced infection prevention mechanisms.
 
 ## How it works
 
@@ -1147,28 +1160,45 @@ Firstly, a hospital structure is set up, with multiple wards. Each ward can have
 
 Every tick, toilets are cleaned and patients redistributed such that infected/colonised patients are moved to side rooms.
 
-An outbreak may be triggerred at a particular time point in the simulation. If this happens, some parameters change to encourage increased transmission. Then, an optional period of enhanced infection control practice may be triggerred to deal with the increased transmission.
+An outbreak may be triggerred at a particular time point in the simulation. If this happens, some parameters change to encourage increased transmission. Then, an optional limited period of enhanced infection control practice may be triggerred to deal with the increased transmission.
 
 ## How to use it
 
-Placeholder
+Firstly, use the "Setup options" to define the hospital structure: 
+
+1) _wards-total_: the total number of wards in the hospital,
+2) _bedspaces-per-ward_: the number of bedspaces available in each ward (each bedspace can be a bay or side-room; bays can accomodoate 4 patients, while side-rooms only one),
+3) _bay-proportion_: the proportion of bedspaces that are bays.
+
+Now, press "Setup" to create this hospital. The hospital window on the right may exceed the viewing area on the monitor. To adjust this window, right click on the hospital, click "Select", and adjust the size.
+
+Next, there are many parameters that can be changed which can affect transmission and control of infection/colonisation. The model comes with a default configuration of parameters that can be loaded. These parameters have been generated by calibrating the model to data of a _C. difficile_ outbreak reported by Salgado et al. [1]. 
+
+Assuming that the parameters are left at these defaults, now just press "Go" to run the simulation. Observe that patients are admitted, use toilets, and may get colonised/infected. Green patients are uninfected, red are infected. Eventually, once the simualtion reaches the outbreak time-point, the number of cases (observe the two plots) increase. The outbreak is then recognised and enhanced infection control measures are implemented to control it, bringing rates back down to baseline. 
 
 ## Parameter references
 
-* _random-colonisation_: Daneman, 2015 [1] -- Rate of 6.2 cases per 10,000 patient bed days for _C. difficile_.
+* _random-colonisation_: Daneman, 2015 [2] -- Rate of 6.2 cases per 10,000 patient bed days for _C. difficile_.
 
+## Things to try
 
-## THINGS TO NOTICE
+Try changing the different parameters to look at the impact on transmission. Start by turning off both the "outbreak?" and "infection-control?" switches so that no outbreak takes place. Run the simulation using the default settings. While the simulation is running, try changing different paramaters to pusuh the rate of infection up. Which parameters seem to have the most impact? 
 
-(suggested things for the user to notice while running the model)
+Try comparing the following two scenarios:
 
-## THINGS TO TRY
+Firstly load the default parameters using "Load Parameters". Make sure "outbreak?" and "infection-control?" are turned on, to simulate and outbreak and enchanced infection control. Run the simulation and observe the outbreak curve. 
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+Now, re-load the default parameters. This time, keep "outbreak?" turned on, but turn off "infection-control?". Re-run the simulation. What happens to the outbreak curve now?
 
-## EXTENDING THE MODEL
+## Parameter import data format
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+The model can load parameters from a .csv file, using "Load Parameters". The folowing format is required:
+
+* No column names (i.e., data starts from the first row)
+* Column 1 is the parameter name
+* From columns 2 onwards, parameter values for each parameter; if multiple values are provided, the model will calculate and use the mean.
+
+An example of this format is provided with the model.
 
 ## NETLOGO FEATURES
 
@@ -1180,7 +1210,9 @@ Placeholder
 
 ## CREDITS AND REFERENCES
 
-1. Daneman N, Guttmann A, Wang X, Ma X, Gibson D, Stukel T. The association of hospital prevention processes and patient risk factors with the risk of Clostridium difficile infection: a population-based cohort study. BMJ Qual Saf. 2015 Jul;24(7):435–43. 
+1. Salgado CD, Mauldin PD, Fogle PJ, Bosso JA. Analysis of an outbreak of Clostridium difficile infection controlled with enhanced infection control measures. American Journal of Infection Control. 2009 Aug;37(6):458–64. 
+
+2. Daneman N, Guttmann A, Wang X, Ma X, Gibson D, Stukel T. The association of hospital prevention processes and patient risk factors with the risk of Clostridium difficile infection: a population-based cohort study. BMJ Qual Saf. 2015 Jul;24(7):435–43. 
 @#$#@#$#@
 default
 true
