@@ -5,11 +5,7 @@ manuscript:
   article: index.qmd
 
 format:
-  html:
-    comments:
-      hypothesis: true
-  docx: default
-  jats: default
+  pdf: default
 
   # (other formats)
   # pdf: default
@@ -17,5 +13,6 @@ format:
 execute:
   freeze: true
 
+bibliography: references.bib
 
 

@@ -5,7 +5,6 @@ authors:
     affiliation: University of Liverpool
     roles: writing
     corresponding: true
-bibliography: references.bib
 ---
 
 # Background
@@ -39,7 +38,7 @@ $$
 where:
 
 -   $x_p(t) = 0$ if patient $p$ is not infected/colonised at time $t$,
--   $x_p(t) = 1$ if patient $p$ is infected/colonised at time $t$. It was assumed that infection/colonisation was not reversible during the simulation, i.e., that infected/colonised patients remained so until discharge. Therefore, in contrast to a traditional susceptible-infected-recovered model [@anderson1991], this model was defined as:
+-   $x_p(t) = 1$ if patient $p$ is infected/colonised at time $t$. It was assumed that infection/colonisation was not reversible during the simulation, i.e., that infected/colonised patients remained so until discharge. Hence, in contrast to a traditional susceptible-infected-recovered model [@anderson1991], the differential equations of this model were:
 
 $$
 \frac{dH_S}{dt} = A_S - QH_S(t)H_I(t) - DH_S(t)
@@ -51,18 +50,57 @@ $$
 
 where:
 
+-   \$dH_s/dt\$ is the rate of
 -   $H_S$ is the number of susceptible inpatients,
 -   $H_I$ is the number of infected inpatients,
 -   $A_S$ is the rate of new susceptible admissions,
 -   $A_I$ is the rate of new infected admissions,
--   $Q$ is the rate of transmission,
+-   $Q$ is the transmission coefficient,
 -   $D$ is the rate of patients that are discharged.
 
-The hospital capacity was constantly kept at 100% occupancy, therefore:
+The hospital capacity was constantly kept at 100% occupancy (i.e., patients were immediately replaced on discharge), therefore:
 
 $$
 D = A_S + A_I
 $$
+
+At each time increment, the probability of a non-colonised/infected patient acquiring infection (i.e., transitioning from a non-infected/colonised to infected/colonised state) depended on: 1) a baseline risk of *de novo* infection/colonisation:
+
+$$ 
+P_\text{de novo}(t) = 1 - \exp {( - r_0 T(t) )}
+$$
+
+and 2) the usage of contaminated toilets:
+
+$$
+P_\text{toilet}(t) = 1 - \exp ( {-\sum_{j=0}^{U_i(t)}[C(t_j) \cdot T(t)]} )
+$$
+
+where:
+
+
+Administration of antimicrobial therapy modified the risk of infection/colonisation.
+
+$$
+R_i(t) = r_0 \cdot T(t) + \sum_{j=0}^{U_i(t)}[C(t_j) \cdot T(t)]
+$$
+
+where:
+
+-   $R_i(t)$ is the risk of patient $i$ acquiring infection/colonisation at time $t$,
+
+-   $r_0$ is the baseline/*de novo* risk of infection/colonisation,
+
+-   $T(t)$ is a binary indicator for antimicrobial therapy:
+
+$$
+\mathrm{T}(t) = \begin{cases}
+    m & \text{if on antimicrobial therapy} \\ % & is your "\tab"-like command (it's a tab alignment character)
+    1 & \text{otherwise.}
+\end{cases}
+$$
+
+-   $m$ is the increased (or decreased) relative risk of infection/colonisation due to antimicrobial therapy,
 
 Users can run the model interactively using the interface shown in @fig-screenshot. Input parameters included patient factors (e.g., community colonisation rate), population behaviour (e.g., frequency of toilet use), and infection control measures (e.g., toilet cleaning frequency). Risk of infection changed as patients shared use of contaminated toilets, or were prescribed antimicrobial therapy.
 
@@ -73,7 +111,7 @@ Data from a *Clostridioides difficile* outbreak reported by Salgado et al, was u
 Rejection sampling approximate Bayesian computation was employed to calibrate the model to the outbreak data. The parameters in @tbl-consts were kept constant during the calibration. Using cases per 1000 patient days as a summary statistic, simulated data were compared to the actual reported rate of nosocomial CDI. Priors were determined from domain expertise or extracted from existing literature. Firstly, the model was calibrated to pre-outbreak data to identify parameters that simulated the baseline rate. Next, we simulated the emergence of an outbreak and its subsequent control by incrementally raising colonisation pressure over time (via increased antimicrobial consumption, toilet use, etc.) and enhancing infection control measures, respectively. Finally, the posterior parameter distributions were used to simulate 20 outbreaks.
 
 | Name                                                       | Value    | Description                                                             | Reference                |
-|------------------|------------------|--------------------|------------------|
+|------------------|------------------|-------------------|------------------|
 | Baseline (pre-outbreak) antimicrobial prescription rate    | 0.319    | Proportion of patients administered antimicrobials during admission     | @versporten2018          |
 | Admission duration                                         | 8.3 days | Mean of a Poisson distribution                                          | @thehealthfoundation2023 |
 | Proportion of toilets that are shared between \>1 patients | 0.6      | The remaining proportion (0.4) of toilets were dedicated to one patient | N/A                      |
@@ -95,6 +133,7 @@ control_antibiotic_rate <- round(mean(posteriors[, "c-antibiotic-prescription-ra
 After calibration, key parameters included: community colonisation rate of `r comm_colonisation`%, rising to `r outbreak_colonisation`% during the outbreak period. Furthermore, the proportion of patients prescribed an antimicrobial during their admission increased from `r consts[["antibiotic-prescription-rate"]] * 100`% to `r outbreak_antibiotic_rate`% during the outbreak; then reduced to `r control_antibiotic_rate`% during the period of enhanced infection control measures. The posterior parameter distributions are shown in @fig-posterior-densities. Simulated data had a pre-outbreak baseline median rate of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
 
 ```{r}
+#| eval: true
 #| echo: false
 #| fig.width: 18
 #| fig.height: 8
