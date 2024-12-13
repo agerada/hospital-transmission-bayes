@@ -5,6 +5,7 @@ authors:
     affiliation: University of Liverpool
     roles: writing
     corresponding: true
+bibliography: references.bib
 ---
 
 # Background
@@ -50,7 +51,7 @@ $$
 
 where:
 
--   \$dH_s/dt\$ is the rate of
+-   $dH_s/dt$ is the rate of
 -   $H_S$ is the number of susceptible inpatients,
 -   $H_I$ is the number of infected inpatients,
 -   $A_S$ is the rate of new susceptible admissions,
@@ -78,15 +79,6 @@ $$
 
 where:
 
-
-Administration of antimicrobial therapy modified the risk of infection/colonisation.
-
-$$
-R_i(t) = r_0 \cdot T(t) + \sum_{j=0}^{U_i(t)}[C(t_j) \cdot T(t)]
-$$
-
-where:
-
 -   $R_i(t)$ is the risk of patient $i$ acquiring infection/colonisation at time $t$,
 
 -   $r_0$ is the baseline/*de novo* risk of infection/colonisation,
@@ -102,13 +94,63 @@ $$
 
 -   $m$ is the increased (or decreased) relative risk of infection/colonisation due to antimicrobial therapy,
 
-Users can run the model interactively using the interface shown in @fig-screenshot. Input parameters included patient factors (e.g., community colonisation rate), population behaviour (e.g., frequency of toilet use), and infection control measures (e.g., toilet cleaning frequency). Risk of infection changed as patients shared use of contaminated toilets, or were prescribed antimicrobial therapy.
+-   $U_i(t)$ is the number of times patient $i$ frequents the toilet within the time interval $t$,
 
-## Data
+-   $C(t_j)$ is the contamination level of the toilet at time $t_j$.
 
-Data from a *Clostridioides difficile* outbreak reported by Salgado et al, was used to calibrate the model.
+The agent-based model conducted Bernoulli trials to determine if a patient acquired infection/colonisation at each time step $t$:
 
-Rejection sampling approximate Bayesian computation was employed to calibrate the model to the outbreak data. The parameters in @tbl-consts were kept constant during the calibration. Using cases per 1000 patient days as a summary statistic, simulated data were compared to the actual reported rate of nosocomial CDI. Priors were determined from domain expertise or extracted from existing literature. Firstly, the model was calibrated to pre-outbreak data to identify parameters that simulated the baseline rate. Next, we simulated the emergence of an outbreak and its subsequent control by incrementally raising colonisation pressure over time (via increased antimicrobial consumption, toilet use, etc.) and enhancing infection control measures, respectively. Finally, the posterior parameter distributions were used to simulate 20 outbreaks.
+$$
+X_\text{de novo} \sim \text{Bernoulli}(P_\text{de novo}(t)),
+$$
+
+where $X_\text{de novo}$ = 1 if patient acquires infection/colonisation *de novo* at time $t$, and 0 otherwise.
+
+$$
+X_\text{toilet} \sim \text{Bernoulli}(P_\text{toilet}(t)),
+$$
+
+where $X_\text{toilet}$ = 1 if patient acquires infection/colonisation from a contaminated toilet at time $t$, and 0 otherwise.
+
+The results of the trials were combined to determine the outcome for patient $i$ at time $t$:
+
+$$
+X_i(t) = \max(X_\text{de novo}, X_\text{toilet}),
+$$
+
+where $X_i(t)$ = 1 if patient $i$ acquires infection/colonisation at time $t$, and 0 otherwise.
+
+## Model inputs and outputs
+
+Model input parameters were broadly grouped into: 1) toilet (e.g., number of times toilet used per day, level of contamination after use or cleaning); 2) admission (e.g., community colonisation rate, antimicrobial prescription rate); and 3) colonisation parameters (e.g., relative risk increase of antimicrobial therapy on colonisation/infection).
+
+The outputs of the model included: 1) number of patients admitted; 2) number of patients with community-acquired colonisation/infection; 3) number of patients with hospital-acquired (nosocomial) colonisation/infection. The simulation was run with each unit of time corresponding to one day; therefore, the model's outputs were for each simulated day.
+
+## Data sources
+
+Data from a hospital *Clostridioides difficile* infection (CDI) outbreak reported by Salgado et al was used to parameterise and calibrate the model [@salgado2009]. Raw data from this study were not available, therefore, the Engauge digitizer software was used to extract observed CDI rates from the manuscript's figures [@mitchell2020].
+
+## Model calibration
+
+Rejection sampling approximate Bayesian computation was employed to calibrate the model to the outbreak data [@sunnåker2013]. Priors were determined from domain knowledge or extracted from existing literature. The parameters in @tbl-consts were kept constant during the calibration process.
+
+Firstly, latin hypercube sampling was used to generate $n$ samples from the parameter prior distributions, using a uniform distribution, such that $\theta_1,\theta_2,\ldots,\theta_n$. Next, each sample parameter point $\theta_i$ was used as an input to the agent-based model, generating a total of $n$ simulated datasets. The number of daily cases of nosocomial CDI were extracted from the model outputs, and converted to a time series of nosocomial CDI per 1000 patient days for each month, generating simulated summary statistics $S_1,S_2,\ldots,S_n$. Results from the first 30 simulated days were discarded to ensure that the model had reached a steady state.
+
+Each simulated summary statistic $S_i$ was compared to the summary statistic generated from the observed data, $S_\text{obs}$, and $S_i$ was accepted if:
+
+$$
+d(S_i, S_\text{obs}) \leq \epsilon,
+$$
+
+where:
+
+-   $d$ is the Euclidean distance between $S_i$ and $S_\text{obs}$, and
+
+-   $\epsilon$ is the tolerance.
+
+Otherwise, $S_i$ was rejected. The parameter samples that generated the accepted simulations were used to generate a posterior distribution.
+
+Firstly, the model was calibrated to pre-outbreak data to identify parameters that simulated the baseline rate. Next, we simulated the emergence of an outbreak and its subsequent control by incrementally raising colonisation pressure over time (via increased antimicrobial consumption, toilet use, etc.) and enhancing infection control measures, respectively. Finally, the posterior parameter distributions were used to simulate 20 outbreaks.
 
 | Name                                                       | Value    | Description                                                             | Reference                |
 |------------------|------------------|-------------------|------------------|
@@ -119,6 +161,14 @@ Rejection sampling approximate Bayesian computation was employed to calibrate th
 : Parameters that were assumed to be constant during calibration. {#tbl-consts}
 
 ![Screenshot of model graphical user interface during a simulation run](./images/screenshot.png){#fig-screenshot height="30%"}
+
+Users can run the model interactively using the interface shown in @fig-screenshot.
+
+## Outbreak generation
+
+To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced IPC measures. Changes in parameters such as increased antimicrobial prescription rates and decreased toilet cleaning frequency were used to encourage increased disease transmission, leading to an outbreak. On the other hand, these parameters were reversed to control the outbreak.
+
+## Model availability
 
 # Results
 
