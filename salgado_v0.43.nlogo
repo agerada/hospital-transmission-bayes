@@ -300,9 +300,10 @@ to update-patients
   ;; see if patients get randomly colonised
   ask patients [
     let abx-multiplier ifelse-value (antibiotic-treated?) [antibiotic-effect] [1]
-    if random-float 1 < ( ( random-colonisation * abx-multiplier ) * ( 1 / 10000 ) )
+    let de-novo-event 1 - exp ( - ( random-colonisation * ( 1 / 10000 ) ) * abx-multiplier )
+    if random-float 1 < de-novo-event
     [
-;      show "colonising"
+      show "colonising"
       set colonised? true
       set color red
       set hospital-infection? true
@@ -339,7 +340,8 @@ to check-toilet-colonise-patient [ t ]
   ask t [
     if not colonised? [
       let abx-multiplier ifelse-value (antibiotic-treated?) [antibiotic-effect] [1]
-      if random-float ( 1 * abx-multiplier) < toilet-contamination [
+      let toilet-event 1 - exp ( - ( toilet-contamination * abx-multiplier ) )
+      if random-float 1 < toilet-event [
         set colonised? true
         set hospital-infection? true
         set total-hospital-infections total-hospital-infections + 1
@@ -1210,6 +1212,8 @@ An example of this format is provided with the model.
 (models in the NetLogo Models Library and elsewhere which are of related interest)
 
 ## Changelog
+
+* 0.43 - adds exponential functions to the bernoulli trials for random colonisation and toilet colonisation. This does not change functionality of the model, but aligns with mathematical notation.
 
 * 0.42 - uses time extension to schedule toilet clean and use during the day using discrete event simulation.
 
