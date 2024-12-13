@@ -42,11 +42,11 @@ where:
 -   $x_p(t) = 1$ if patient $p$ is infected/colonised at time $t$. It was assumed that infection/colonisation was not reversible during the simulation, i.e., that infected/colonised patients remained so until discharge. Hence, in contrast to a traditional susceptible-infected-recovered model [@anderson1991], the differential equations of this model were:
 
 $$
-\frac{dH_S}{dt} = A_S - QH_S(t)H_I(t) - DH_S(t)
+\frac{dH_S}{dt} = A_S - Q\frac{H_S(t)}{H_I(t)} - DH_S(t)
 $$
 
 $$
-\frac{dH_I}{dt} = A_I + QH_S(t)H_I(t) - DH_I(t)
+\frac{dH_I}{dt} = A_I + Q\frac{H_S(t)}{H_I(t)} - DH_I(t)
 $$
 
 where:
@@ -287,6 +287,148 @@ consts_sim_rates %>%
   geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
   guides(color="none")
 ```
+
+```{r}
+single_outbreak_sim_mod <- single_outbreak_sim %>% 
+  mutate(prop_infected = `current-colonised` / `current-inpatients`,
+         current_not_infected = `current-inpatients` - `current-colonised`)
+single_outbreak_sim_mod %>% 
+  pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
+  ggplot(aes(x = `[step]`, y = value, color = compartment)) +
+  geom_line() +
+  labs(title = "Dynamics of Non-Infected and Infected Patients (Time-Varying Beta)",
+       x = "Time",
+       y = "Number of Patients",
+       color = "Compartment") 
+
+# single_outbreak_sum_stat <- single_outbreak_sim_mod %>% 
+#   group_by(`[step]`) %>%
+#   summarise(m = mean(prop_infected))
+```
+
+
+```{r}
+# Parameters and time-dependent functions
+parameters <- list(
+  p = 1 - unique(single_outbreak_sim$`community-colonisation-rate`),      # Proportion of non-infected admissions
+  A = 50        # Total admission/discharge rate
+)
+# 
+# baselinerate <- seq(from=0.01, to=0.99, length.out = 5)
+# outbreakrate <- seq(0.01, 0.99, length.out = 5)
+# rate_grid <- expand.grid(baselinerate, outbreakrate)
+
+# Time-varying beta function (example: sinusoidal variation over time)
+beta_function <- function(t, baseline_rate, outbreak_rate) {
+  if (t > unique(single_outbreak_sim$`outbreak-start`) &
+      t < unique(single_outbreak_sim$`outbreak-end`)) {
+    return (outbreak_rate)
+  }
+  return (baseline_rate)
+}
+
+# Initial conditions
+initial_state <- c(N = 600, I = 71)  # Initial populations of non-infected and infected patients
+time <- seq(0, run_to, by = 1)         # Time steps
+dt <- 1                             # Time step size
+# 
+# plan(multisession)
+# furrr::future_map2(rate_grid$Var1, rate_grid$Var2,
+#         \(x, y) {
+#           print("1")
+#           N <- numeric(length(time))
+#           I <- numeric(length(time))
+#           N[1] <- initial_state["N"]
+#           I[1] <- initial_state["I"]
+#           
+#           # Euler method for numerical integration with time-varying parameters
+#           for (t in 1:(length(time) - 1)) {
+#             # Current beta value
+#             beta_t <- beta_function(time[t], x, y)
+#             
+#             # Total population at current time
+#             total <- N[t] + I[t]
+#             
+#             # Proportions of non-infected and infected
+#             prop_N <- ifelse(total > 0, N[t] / total, 0)
+#             prop_I <- ifelse(total > 0, I[t] / total, 0)
+#             
+#             # Calculate derivatives
+#             dN <- parameters$p * parameters$A - parameters$A * prop_N - beta_t * N[t] * prop_I
+#             dI <- (1 - parameters$p) * parameters$A - parameters$A * prop_I + beta_t * N[t] * prop_I
+#             
+#             # Update populations using Euler's method
+#             N[t + 1] <- N[t] + dN * dt
+#             I[t + 1] <- I[t] + dI * dt
+#           }
+#           I[31:length(I)] / ( N[31:length(N)] + I[31:length(I)] )
+#         })
+
+baselinerate <- 0.02
+outbreakrate <- 0.07
+
+# Initialize vectors to store results
+N <- numeric(length(time))
+I <- numeric(length(time))
+N[1] <- initial_state["N"]
+I[1] <- initial_state["I"]
+
+# Euler method for numerical integration with time-varying parameters
+for (t in 1:(length(time) - 1)) {
+  # Current beta value
+  beta_t <- beta_function(time[t], baselinerate, outbreakrate)
+  
+  # Total population at current time
+  total <- N[t] + I[t]
+  
+  # Proportions of non-infected and infected
+  prop_N <- ifelse(total > 0, N[t] / total, 0)
+  prop_I <- ifelse(total > 0, I[t] / total, 0)
+  
+  # Calculate derivatives
+  dN <- parameters$p * parameters$A - parameters$A * prop_N - beta_t * N[t] * prop_I
+  dI <- (1 - parameters$p) * parameters$A - parameters$A * prop_I + beta_t * N[t] * prop_I
+  
+  # Update populations using Euler's method
+  N[t + 1] <- N[t] + dN * dt
+  I[t + 1] <- I[t] + dI * dt
+}
+
+# Combine results into a data frame for plotting
+output_df <- data.frame(
+  time = time,
+  N = N,
+  I = I
+)
+
+output_df <- filter(output_df, time > 31)
+
+# Plot the results
+library(ggplot2)
+output_long <- reshape2::melt(output_df, id = "time")
+ggplot(output_long, aes(x = time, y = value, color = variable)) +
+  geom_line(size = 1) +
+  labs(title = "Dynamics of Non-Infected and Infected Patients (Time-Varying Beta)",
+       x = "Time",
+       y = "Number of Patients",
+       color = "Compartment") +
+  scale_color_manual(values = c("blue", "red"),
+                     labels = c("Non-Infected (N)", "Infected (I)")) +
+  theme_minimal()
+
+single_outbreak_sim_mod %>% 
+  pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
+  ggplot(aes(x = `[step]`, y = value, color = compartment)) +
+  geom_line() +
+  labs(title = "Dynamics of Non-Infected and Infected Patients (Time-Varying Beta)",
+       x = "Time",
+       y = "Number of Patients",
+       color = "Compartment") +
+  geom_line(data = output_df, aes(x = time, y = N), color = "blue") + 
+  geom_line(data = output_df, aes(x = time, y = I), color = "red")
+```
+
+
 
 # Discussion
 
