@@ -20,6 +20,7 @@ bibliography: references.bib
 # set text(font: "STIX Two Text", size: 24pt)
 library(tidyverse)
 library(abc)
+library(lhs)
 source(file.path("..", "calibrate.R"))
 # load(file.path("..", "out", "calibrate.RData"))
 ```
@@ -39,36 +40,12 @@ $$
 where:
 
 -   $x_p(t) = 0$ if patient $p$ is not infected/colonised at time $t$,
--   $x_p(t) = 1$ if patient $p$ is infected/colonised at time $t$. It was assumed that infection/colonisation was not reversible during the simulation, i.e., that infected/colonised patients remained so until discharge. Hence, in contrast to a traditional susceptible-infected-recovered model [@anderson1991], the differential equations of this model were:
+-   $x_p(t) = 1$ if patient $p$ is infected/colonised at time $t$.
 
-$$
-\frac{dH_S}{dt} = A_S - Q\frac{H_S(t)}{H_I(t)} - DH_S(t)
-$$
-
-$$
-\frac{dH_I}{dt} = A_I + Q\frac{H_S(t)}{H_I(t)} - DH_I(t)
-$$
-
-where:
-
--   $dH_s/dt$ is the rate of
--   $H_S$ is the number of susceptible inpatients,
--   $H_I$ is the number of infected inpatients,
--   $A_S$ is the rate of new susceptible admissions,
--   $A_I$ is the rate of new infected admissions,
--   $Q$ is the transmission coefficient,
--   $D$ is the rate of patients that are discharged.
-
-The hospital capacity was constantly kept at 100% occupancy (i.e., patients were immediately replaced on discharge), therefore:
-
-$$
-D = A_S + A_I
-$$
-
-At each time increment, the probability of a non-colonised/infected patient acquiring infection (i.e., transitioning from a non-infected/colonised to infected/colonised state) depended on: 1) a baseline risk of *de novo* infection/colonisation:
+It was assumed that infection/colonisation was not reversible during the simulation, i.e., that infected/colonised patients remained so until discharge. At each time increment, the probability of a non-colonised/infected patient acquiring infection (i.e., transitioning from a non-infected/colonised to infected/colonised state) depended on: 1) a baseline risk of *de novo* infection/colonisation:
 
 $$ 
-P_\text{de novo}(t) = 1 - \exp {( - r_0 T(t) )}
+P_\text{de novo}(t) = 1 - \exp {( - r_0 T(t) )},
 $$
 
 and 2) the usage of contaminated toilets:
@@ -119,6 +96,29 @@ X_i(t) = \max(X_\text{de novo}, X_\text{toilet}),
 $$
 
 where $X_i(t)$ = 1 if patient $i$ acquires infection/colonisation at time $t$, and 0 otherwise.
+
+A deterministic representation of the model was described in terms of the following differential equations, an adaptation of *SI* (susceptible--infection) models [@anderson1991;@keeling2011]:
+
+$$
+\frac{dS}{dt} = pA - D \cdot \frac{S}{S + I} - \beta S- rS
+$$
+
+$$
+\frac{dI}{dt} = (1 - p)A - D \cdot \frac{I}{S + I} + \beta S + rS
+$$
+
+where:
+
+-   $dS/dt$ is the rate of change of susceptible/non-infected inpatients,
+-   $S$ is the number of susceptible inpatients,
+-   $I$ is the number of infected/colonised inpatients,
+-   $A$ is the rate of new admissions,
+-   $p$ is the proportion of new admissions that are susceptible/non-infected, while $(1 - p)$ is community colonisation/infection rate,
+-   $\beta$ is the transmission coefficient,
+-   $r$ is the rate of random (_de novo_) colonisation/infection,
+-   $D$ is the rate of patient discharges.
+
+The hospital capacity was constantly kept at 100% occupancy (i.e., patients were immediately replaced on discharge), therefore, $D = A$. 
 
 ## Model inputs and outputs
 
@@ -306,7 +306,6 @@ single_outbreak_sim_mod %>%
 #   summarise(m = mean(prop_infected))
 ```
 
-
 ```{r}
 # Parameters and time-dependent functions
 parameters <- list(
@@ -328,17 +327,26 @@ target_outbreak_rate <- single_outbreak_one_seed %>%
   summarise(prop_infected = mean(prop_infected)) %>% 
   pull(prop_infected)
 
-baselinerate <- seq(from=0.005, to=0.1, length.out = 100)
-outbreakrate <- seq(0.005, 0.1, length.out = 100)
-baselinecolonisation <- seq(0.9, 0.99, length.out = 100)
-outbreakcolonisation <- seq(0.9, 0.99, length.out = 100)
-rate_grid <- expand.grid(b_base = baselinerate,
-                         b_out = outbreakrate,
-                         c_base = baselinecolonisation,
-                         c_out = outbreakcolonisation)
+randomLHS <- randomLHS(10000, 5)
+
+baselinerate <- qunif(randomLHS[, 1], 0.0005, 0.01)
+outbreakrate <- qunif(randomLHS[, 2], 0.0005, 0.01)
+baselinecolonisation <- qunif(randomLHS[, 3], 0.9, 0.99)
+outbreakcolonisation <- qunif(randomLHS[, 4], 0.9, 0.99)
+r <- qunif(randomLHS[, 5], 0.0001, 0.001)
+# rate_grid <- expand.grid(b_base = baselinerate,
+#                          b_out = outbreakrate,
+#                          c_base = baselinecolonisation,
+#                          c_out = outbreakcolonisation,
+#                          r = r)
+rate_grid <- data.frame(b_base = baselinerate,
+                        b_out = outbreakrate,
+                        c_base = baselinecolonisation,
+                        c_out = outbreakcolonisation,
+                        r = r)
 rate_grid <- rate_grid %>% 
   filter(b_base < b_out & c_base > c_out) %>% 
-  slice_sample(n = 100)
+  slice_sample(n = 300)
 
 # Time-varying beta function (example: sinusoidal variation over time)
 beta_function <- function(t, baseline_rate, outbreak_rate) {
@@ -349,6 +357,8 @@ beta_function <- function(t, baseline_rate, outbreak_rate) {
   return (baseline_rate)
 }
 
+run_to <- max(single_outbreak_sim$`[step]`)
+
 # Initial conditions
 initial_state <- c(N = 600, I = 17)  # Initial populations of non-infected and infected patients
 time <- seq(0, run_to, by = 1)         # Time steps
@@ -356,7 +366,7 @@ dt <- 1                             # Time step size
 
 plan(multisession)
 ode_sims <- furrr::future_pmap_dfr(rate_grid,
-        \(b_base, b_out, c_base, c_out) {
+        \(b_base, b_out, c_base, c_out, r) {
           N <- numeric(length(time))
           I <- numeric(length(time))
           N[1] <- initial_state["N"]
@@ -376,8 +386,8 @@ ode_sims <- furrr::future_pmap_dfr(rate_grid,
             prop_I <- ifelse(total > 0, I[t] / total, 0)
             
             # Calculate derivatives
-            dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t] * prop_I
-            dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t] * prop_I
+            dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t]  - r * N[t]
+            dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t]  + r * N[t]
             
             # Update populations using Euler's method
             N[t + 1] <- N[t] + dN * dt
@@ -387,17 +397,17 @@ ode_sims <- furrr::future_pmap_dfr(rate_grid,
                      outbreak = mean(I[1100:1200] / ( N[1100:1200] + I[1100:1200] )))
         })
 
-abc(c(target_baseline_rate, target_outbreak_rate), rate_grid, ode_sims[c("baseline", "outbreak")], tol=0.5, method='rejection') %>% 
-  summary()
+abc_single_outbreak <- abc(c(target_baseline_rate, target_outbreak_rate), rate_grid, ode_sims[c("baseline", "outbreak")], tol=0.025, method='rejection')
 
 
-baselinerate <- 0.0236
-outbreakrate <- 0.0482
+baselinerate <- mean(abc_single_outbreak$unadj.values[, "b_base"])
+outbreakrate <- mean(abc_single_outbreak$unadj.values[, "b_out"])
 
 # baselinecolonisation <- 1 - unique(single_outbreak_sim$`community-colonisation-rate`)
 # outbreakcolonisation <- 1 - unique(single_outbreak_sim$`o-community-colonisation-rate`)
-baselinecolonisation <- 0.9721
-outbreakcolonisation <- 0.9403
+baselinecolonisation <- mean(abc_single_outbreak$unadj.values[, "c_base"])
+outbreakcolonisation <- mean(abc_single_outbreak$unadj.values[, "c_out"])
+r <- mean(abc_single_outbreak$unadj.values[, "r"])
 
 # Initialize vectors to store results
 N <- numeric(length(time))
@@ -419,8 +429,8 @@ for (t in 1:(length(time) - 1)) {
   prop_I <- ifelse(total > 0, I[t] / total, 0)
   
   # Calculate derivatives
-  dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t] * prop_I
-  dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t] * prop_I
+  dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t]  - r * N[t]
+  dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t]  + r * N[t]
   
   # Update populations using Euler's method
   N[t + 1] <- N[t] + dN * dt
@@ -451,6 +461,7 @@ ggplot(output_long, aes(x = time, y = value, color = variable)) +
 
 single_outbreak_one_seed %>% 
   pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
+  filter(`[step]` > 31) %>%
   group_by(compartment, `[step]`) %>% 
   summarise(m = mean(value)) %>% 
   ggplot(aes(x = `[step]`, y = m, color = compartment)) +
@@ -462,8 +473,6 @@ single_outbreak_one_seed %>%
   geom_line(data = output_df, aes(x = time, y = N), color = "blue") + 
   geom_line(data = output_df, aes(x = time, y = I), color = "red")
 ```
-
-
 
 # Discussion
 
