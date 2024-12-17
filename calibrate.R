@@ -5,16 +5,22 @@ library(lubridate)
 library(abc)
 library(progressr)
 handlers("cli")
-wards_total <- 16
-bedspaces_per_ward <- 14
 set.seed(42)
 
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
-model_path <- "salgado_v0.42_day_time.nlogo"
+model_path <- "../salgado_v0.42_day_time.nlogo"
 out_path <- "../out/"
 data_path <- "../data/"
 
-run_sims <- FALSE
+# run_sims <- FALSE
+
+calibration_samples <- 100
+calibration_seeds <- 3
+abc_tol <- 0.05
+
+antibiotic_prescription_rate = 0.499 # Vesporten 2018
+admission_days <- 4.6
+bay_proportion <- 0.6
 
 ##============== pre-outbreak =============##
 
@@ -44,22 +50,22 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "toilet-contamination-effect" = list(min=0.01, max=0.99, qfun='qunif'),
                                              "toilet-cleaning-effect" = list(min=0.01, max=0.99, qfun='qunif'),
                                              "toilet-frequenting-rate" = list(min=0.5, max=5, qfun='qunif'),
-                                             "antibiotic-effect" = list(min=0.1, max=12, qfun='qunif'),
-                                             "toilet-cleaning-rate" = list(min=0.5, max=5, qfun='qunif'),
-                                             "random-colonisation" = list(min=1, max=20, qfun='qunif'),
+                                             "antibiotic-effect" = list(min=1.31, max=1.87, qfun='qunif'),
+                                             "toilet-cleaning-rate" = list(min=0.5, max=3, qfun='qunif'),
+                                             "random-colonisation" = list(min=2.8, max=12.1, qfun='qunif'),
                                              "proportion-redistributed" = list(min=0.01, max=0.99, qfun='qunif')
                                              ),
                             constants = list("wards-total" = wards_total,
                                              "outbreak?" = FALSE,
                                              "infection-control?" = FALSE,
                                              "bedspaces-per-ward" = bedspaces_per_ward,
-                                             "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
-                                             "admission-days" = 8.3,
-                                             "bay-proportion" = 0.6))
+                                             "antibiotic-prescription-rate" = antibiotic_prescription_rate,
+                                             "admission-days" = admission_days,
+                                             "bay-proportion" = bay_proportion))
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1000,
-                              nseeds = 1,
+                              samples = calibration_samples,
+                              nseeds = calibration_seeds,
                               precision = 3)
 
 plan(list(sequential, multisession))
@@ -77,19 +83,19 @@ results_baseline <- results_baseline %>%
   filter(`[step]` > 31)
 
 results_baseline <- results_baseline %>% 
-  group_by(siminputrow) %>% 
+  group_by(siminputrow, `random-seed`) %>% 
   mutate(date_sim = seq(from = ymd("2002-01-01"),
                         by = "1 day",
                         length.out = n()))
 
 results_baseline_rates <- results_baseline %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
-  group_by(siminputrow, year, month) %>% 
+  group_by(`random-seed`, siminputrow, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
-results_baseline_summary <- results_baseline %>% distinct(siminputrow, .keep_all = TRUE) %>% 
-  mutate(siminputrow = siminputrow) %>% 
-  right_join(results_baseline_rates, by=c("siminputrow"))
+results_baseline_summary <- results_baseline %>% distinct(`random-seed`, siminputrow, .keep_all = TRUE) %>% 
+  # mutate(siminputrow = siminputrow) %>% 
+  right_join(results_baseline_rates, by=c("siminputrow", "random-seed"))
 
 params_names_pre_outbreak <- names(nl@experiment@variables)
 
@@ -100,12 +106,20 @@ pre_outbreak_data <- salgado %>%
   filter(x < ymd("2004-10-01"))
 
 pre_outbreak_sims <- results_baseline_summary %>% 
-  dplyr::select(all_of(params_names_pre_outbreak), siminputrow, month, year, rate) %>% 
+  dplyr::select(all_of(params_names_pre_outbreak), `random-seed`, siminputrow, month, year, rate) %>% 
   mutate(date_sim = ymd(paste(year, month, "01", sep="-"))) %>%
   filter(date_sim < ymd("2004-10-01")) %>% 
   dplyr::select(!date_sim) %>% 
+  group_by(siminputrow, month, year) %>%
+  summarise(rate = mean(rate)) %>%
   pivot_wider(names_from = c(year, month), values_from = rate,
               names_prefix = "rate_")
+
+pre_outbreak_sims <- results_baseline_summary %>% 
+  ungroup %>% 
+  dplyr::select(siminputrow, all_of(params_names_pre_outbreak)) %>%
+  distinct(siminputrow, .keep_all = TRUE) %>%
+  right_join(pre_outbreak_sims)
 
 sumstats <- pre_outbreak_sims %>% 
   ungroup %>% 
@@ -114,7 +128,7 @@ sumstats <- pre_outbreak_sims %>%
 abc_params <- abc(target = pre_outbreak_data$rates,
                   param = pre_outbreak_sims[params_names_pre_outbreak],
                   sumstat = sumstats,
-                  tol=0.025,
+                  tol = abc_tol,
                   method="rejection")
 
 # plot
@@ -168,8 +182,8 @@ nl <- nl(nlversion = "6.2.2",
 consts <- list("wards-total" = wards_total,
                "bedspaces-per-ward" = bedspaces_per_ward,
                "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
-               "admission-days" = 8.3,
-               "bay-proportion" = 0.6)
+               "admission-days" = admission_days,
+               "bay-proportion" = bay_proportion)
 
 # use abc mean parameter estimates as constants for baseline
 consts <- c(consts, apply(abc_params$unadj.values, MARGIN = 2, mean))
@@ -189,7 +203,7 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                                                    max=outbreak_start + 90,
                                                    qfun='qunif'),
                            "o-toilet-frequenting-rate" = list(min=consts[["toilet-frequenting-rate"]],
-                                                              max=12,
+                                                              max=8,
                                                               qfun='qunif'),
                            "o-toilet-contamination-effect" = list(min=consts[["toilet-contamination-effect"]],
                                                                   max=0.99,
@@ -197,14 +211,14 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "o-toilet-cleaning-effect" = list(min=0.01,
                                                              max=consts[["toilet-cleaning-effect"]],
                                                              qfun='qunif'),
-                           "o-toilet-cleaning-rate" = list(min=1,
+                           "o-toilet-cleaning-rate" = list(min=0.5,
                                                            max=consts[["toilet-cleaning-rate"]],
                                                            qfun='qunif'),
                            "o-community-colonisation-rate" = list(min=consts[["community-colonisation-rate"]],
-                                                                  max=0.1,
+                                                                  max=consts[["community-colonisation-rate"]] + 0.5 * consts[["community-colonisation-rate"]],
                                                                   qfun='qunif'),
-                           "o-antibiotic-prescription-rate" = list(min=0.319,
-                                                                   max=0.62, # also from Vesporten 2018
+                           "o-antibiotic-prescription-rate" = list(min=antibiotic_prescription_rate,
+                                                                   max=antibiotic_prescription_rate + 0.5 * antibiotic_prescription_rate,
                                                                    qfun='qunif'),
                            "o-proportion-redistributed" = list(min=0.01,
                                                                max=consts[["proportion-redistributed"]],
@@ -213,10 +227,10 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                                                              max=0.99,
                                                              qfun='qunif'),
                            "c-toilet-cleaning-rate" = list(min=consts[["toilet-cleaning-rate"]],
-                                                           max=4,
+                                                           max=consts[["toilet-cleaning-rate"]] + 0.5 * consts[["toilet-cleaning-rate"]],
                                                            qfun='qunif'),
-                           "c-antibiotic-prescription-rate" = list(min=0.237,
-                                                                   max=0.319,
+                           "c-antibiotic-prescription-rate" = list(min=antibiotic_prescription_rate - 0.5 * antibiotic_prescription_rate,
+                                                                   max=antibiotic_prescription_rate,
                                                                    qfun='qunif'),
                            "c-proportion-redistributed" = list(min=consts[["proportion-redistributed"]],
                                                                max=0.99,
@@ -242,8 +256,8 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1000,
-                              nseeds = 1,
+                              samples = calibration_samples,
+                              nseeds = calibration_seeds,
                               precision = 3)
 
 plan(list(sequential, multisession))
@@ -261,19 +275,19 @@ results_outbreak_control <- results_outbreak_control %>%
   filter(`[step]` > 31)
 
 results_outbreak_control <- results_outbreak_control %>% 
-  group_by(siminputrow) %>% 
+  group_by(siminputrow, `random-seed`) %>% 
   mutate(date_sim = seq(from = ymd("2002-01-01"),
                         by = "1 day",
                         length.out = n()))
 
 results_outbreak_control_rates <- results_outbreak_control %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
-  group_by(siminputrow, year, month) %>% 
+  group_by(siminputrow, `random-seed`, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
-results_outbreak_control_summary <- results_outbreak_control %>% distinct(siminputrow, .keep_all = TRUE) %>% 
-  mutate(siminputrow = siminputrow) %>% 
-  right_join(results_outbreak_control_rates, by=c("siminputrow"))
+results_outbreak_control_summary <- results_outbreak_control %>% distinct(siminputrow, `random-seed`, .keep_all = TRUE) %>% 
+  # mutate(siminputrow = siminputrow) %>% 
+  right_join(results_outbreak_control_rates, by=c("siminputrow", "random-seed"))
 
 params_names_outbreak_control <- names(nl@experiment@variables)
 
@@ -284,12 +298,20 @@ params_names_outbreak_control <- names(nl@experiment@variables)
 #   filter(x < ymd("2004-10-01"))
 
 outbreak_control_sims <- results_outbreak_control_summary %>% 
-  dplyr::select(all_of(params_names_outbreak_control), siminputrow, month, year, rate) %>% 
+  dplyr::select(all_of(params_names_outbreak_control), `random-seed`, siminputrow, month, year, rate) %>% 
   mutate(date_sim = ymd(paste(year, month, "01", sep="-"))) %>%
   filter(date_sim <= max(salgado$x)) %>% 
   dplyr::select(!date_sim) %>% 
+  group_by(siminputrow, month, year) %>%
+  summarise(rate = mean(rate)) %>%
   pivot_wider(names_from = c(year, month), values_from = rate,
               names_prefix = "rate_")
+
+outbreak_control_sims <- results_outbreak_control_summary %>%
+  ungroup %>% 
+  dplyr::select(siminputrow, all_of(params_names_outbreak_control)) %>%
+  distinct(siminputrow, .keep_all = TRUE) %>%
+  right_join(outbreak_control_sims)
 
 sumstats <- outbreak_control_sims %>% 
   ungroup %>% 
@@ -298,7 +320,7 @@ sumstats <- outbreak_control_sims %>%
 abc_params_outbreak_control <-abc(target = salgado$rates,
                                   param = outbreak_control_sims[params_names_outbreak_control],
                                   sumstat = sumstats,
-                                  tol=0.025,
+                                  tol = abc_tol,
                                   method="rejection")
 
 # plot
@@ -377,15 +399,15 @@ nl@experiment <- experiment(expname = "fine_tune",
                             variables = pre_outbreak_variables,
                             constants = list("wards-total" = wards_total,
                                              "bedspaces-per-ward" = bedspaces_per_ward,
-                                             "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
+                                             "antibiotic-prescription-rate" = antibiotic_prescription_rate, # Vesporten 2018
                                              "outbreak?" = FALSE,
                                              "infection-control?" = FALSE,
-                                             "admission-days" = 8.3,
-                                             "bay-proportion" = 0.6))
+                                             "admission-days" = admission_days,
+                                             "bay-proportion" = bay_proportion))
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1000,
-                              nseeds = 1,
+                              samples = calibration_samples,
+                              nseeds = calibration_seeds,
                               precision = 3)
 
 plan(list(sequential, multisession))
@@ -403,19 +425,19 @@ results_baseline_fine_tune <- results_baseline_fine_tune %>%
   filter(`[step]` > 31)
 
 results_baseline_fine_tune <- results_baseline_fine_tune %>% 
-  group_by(siminputrow) %>% 
+  group_by(siminputrow, `random-seed`) %>% 
   mutate(date_sim = seq(from = ymd("2002-01-01"),
                         by = "1 day",
                         length.out = n()))
 
 results_baseline_rates <- results_baseline_fine_tune %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
-  group_by(siminputrow, year, month) %>% 
+  group_by(`random-seed`, siminputrow, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
-results_baseline_summary <- results_baseline_fine_tune %>% distinct(siminputrow, .keep_all = TRUE) %>% 
-  mutate(siminputrow = siminputrow) %>% 
-  right_join(results_baseline_rates, by=c("siminputrow"))
+results_baseline_summary <- results_baseline_fine_tune %>% distinct(siminputrow, `random-seed`, .keep_all = TRUE) %>% 
+  # mutate(siminputrow = siminputrow) %>% 
+  right_join(results_baseline_rates, by=c("siminputrow", "random-seed"))
 
 params_names_pre_outbreak <- names(nl@experiment@variables)
 
@@ -430,8 +452,16 @@ pre_outbreak_sims <- results_baseline_summary %>%
   mutate(date_sim = ymd(paste(year, month, "01", sep="-"))) %>%
   filter(date_sim < ymd("2004-10-01")) %>% 
   dplyr::select(!date_sim) %>% 
+  group_by(siminputrow, month, year) %>%
+  summarise(rate = mean(rate)) %>%
   pivot_wider(names_from = c(year, month), values_from = rate,
               names_prefix = "rate_")
+
+pre_outbreak_sims <- results_baseline_summary %>%
+  ungroup %>% 
+  dplyr::select(siminputrow, all_of(params_names_pre_outbreak)) %>%
+  distinct(siminputrow, .keep_all = TRUE) %>%
+  right_join(pre_outbreak_sims)
 
 sumstats <- pre_outbreak_sims %>% 
   ungroup %>% 
@@ -440,7 +470,7 @@ sumstats <- pre_outbreak_sims %>%
 abc_params <- abc(target = pre_outbreak_data$rates,
                   param = pre_outbreak_sims[params_names_pre_outbreak],
                   sumstat = sumstats,
-                  tol=0.2,
+                  tol = abc_tol,
                   method="rejection")
 
 # plot
@@ -493,9 +523,9 @@ nl <- nl(nlversion = "6.2.2",
 
 consts <- list("wards-total" = wards_total,
                "bedspaces-per-ward" = bedspaces_per_ward,
-               "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
-               "admission-days" = 8.3,
-               "bay-proportion" = 0.6)
+               "antibiotic-prescription-rate" = antibiotic_prescription_rate, # Vesporten 2018
+               "admission-days" = admission_days,
+               "bay-proportion" = bay_proportion)
 
 # set outbreak and control
 consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
@@ -546,14 +576,14 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "o-toilet-cleaning-effect" = list(min=0.01,
                                                              max=pre_outbreak_variables[["toilet-cleaning-effect"]]$max,
                                                              qfun='qunif'),
-                           "o-toilet-cleaning-rate" = list(min=1,
+                           "o-toilet-cleaning-rate" = list(min=0.5,
                                                            max=pre_outbreak_variables[["toilet-cleaning-rate"]]$max,
                                                            qfun='qunif'),
                            "o-community-colonisation-rate" = list(min=pre_outbreak_variables[["community-colonisation-rate"]]$min,
-                                                                  max=0.1,
+                                                                  max=pre_outbreak_variables[["community-colonisation-rate"]]$max + 0.5 * pre_outbreak_variables[["community-colonisation-rate"]]$max,
                                                                   qfun='qunif'),
-                           "o-antibiotic-prescription-rate" = list(min=0.319,
-                                                                   max=0.62, # also from Vesporten 2018
+                           "o-antibiotic-prescription-rate" = list(min=antibiotic_prescription_rate,
+                                                                   max=antibiotic_prescription_rate + 0.5 * antibiotic_prescription_rate, # also from Vesporten 2018
                                                                    qfun='qunif'),
                            "o-proportion-redistributed" = list(min=0.01,
                                                                max=pre_outbreak_variables[["proportion-redistributed"]]$max,
@@ -564,8 +594,8 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "c-toilet-cleaning-rate" = list(min=pre_outbreak_variables[["toilet-cleaning-rate"]]$min,
                                                            max=pre_outbreak_variables[["toilet-cleaning-rate"]]$max + 2,
                                                            qfun='qunif'),
-                           "c-antibiotic-prescription-rate" = list(min=0.237,
-                                                                   max=0.319,
+                           "c-antibiotic-prescription-rate" = list(min=antibiotic_prescription_rate - 0.5 * antibiotic_prescription_rate,
+                                                                   max=antibiotic_prescription_rate,
                                                                    qfun='qunif'),
                            "c-proportion-redistributed" = list(min=pre_outbreak_variables[["proportion-redistributed"]]$min,
                                                                max=0.99,
@@ -592,8 +622,8 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1000,
-                              nseeds = 1,
+                              samples = calibration_samples,
+                              nseeds = calibration_seeds,
                               precision = 3)
 
 plan(list(sequential, multisession))
@@ -611,19 +641,19 @@ results_outbreak_control_pre_included <- results_outbreak_control_pre_included %
   filter(`[step]` > 31)
 
 results_outbreak_control_pre_included <- results_outbreak_control_pre_included %>% 
-  group_by(siminputrow) %>% 
+  group_by(siminputrow, `random-seed`) %>% 
   mutate(date_sim = seq(from = ymd("2002-01-01"),
                         by = "1 day",
                         length.out = n()))
 
 results_outbreak_control_pre_included_rates <- results_outbreak_control_pre_included %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
-  group_by(siminputrow, year, month) %>% 
+  group_by(siminputrow, `random-seed`, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
-results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included %>% distinct(siminputrow, .keep_all = TRUE) %>% 
-  mutate(siminputrow = siminputrow) %>% 
-  right_join(results_outbreak_control_pre_included_rates, by=c("siminputrow"))
+results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included %>% distinct(`random-seed`, siminputrow, .keep_all = TRUE) %>% 
+  # mutate(siminputrow = siminputrow) %>% 
+  right_join(results_outbreak_control_pre_included_rates, by=c("siminputrow", "random-seed"))
 
 params_names_outbreak_control <- names(nl@experiment@variables)
 
@@ -634,12 +664,20 @@ results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_in
                   `o-community-colonisation-rate` >= `community-colonisation-rate`)
 
 outbreak_control_sims <- results_outbreak_control_pre_included_summary %>% 
-  dplyr::select(all_of(params_names_outbreak_control), siminputrow, month, year, rate) %>% 
+  dplyr::select(all_of(params_names_outbreak_control), `random-seed`, siminputrow, month, year, rate) %>% 
   mutate(date_sim = ymd(paste(year, month, "01", sep="-"))) %>%
   filter(date_sim <= max(salgado$x)) %>% 
   dplyr::select(!date_sim) %>% 
+  group_by(siminputrow, month, year) %>%
+  summarise(rate = mean(rate)) %>%
   pivot_wider(names_from = c(year, month), values_from = rate,
               names_prefix = "rate_")
+
+outbreak_control_sims <- results_outbreak_control_pre_included_summary %>%
+  ungroup %>% 
+  dplyr::select(siminputrow, all_of(params_names_outbreak_control)) %>%
+  distinct(siminputrow, .keep_all = TRUE) %>%
+  right_join(outbreak_control_sims)
 
 sumstats <- outbreak_control_sims %>% 
   ungroup %>% 
@@ -648,7 +686,7 @@ sumstats <- outbreak_control_sims %>%
 abc_params_outbreak_control <-abc(target = salgado$rates,
                                   param = outbreak_control_sims[params_names_outbreak_control],
                                   sumstat = sumstats,
-                                  tol=0.01,
+                                  tol = abc_tol,
                                   method="rejection",
                                   transf = "none")
 
@@ -727,9 +765,9 @@ nl <- nl(nlversion = "6.2.2",
 
 consts <- list("wards-total" = wards_total,
                "bedspaces-per-ward" = bedspaces_per_ward,
-               "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
-               "admission-days" = 8.3,
-               "bay-proportion" = 0.6)
+               "antibiotic-prescription-rate" = antibiotic_prescription_rate, # Vesporten 2018
+               "admission-days" = admission_days,
+               "bay-proportion" = bay_proportion)
 
 # set outbreak and control
 consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
@@ -849,9 +887,9 @@ nl <- nl(nlversion = "6.2.2",
 
 consts <- list("wards-total" = wards_total,
                "bedspaces-per-ward" = bedspaces_per_ward,
-               "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
-               "admission-days" = 8.3,
-               "bay-proportion" = 0.6)
+               "antibiotic-prescription-rate" = antibiotic_prescription_rate, # Vesporten 2018
+               "admission-days" = admission_days,
+               "bay-proportion" = bay_proportion)
 
 # set outbreak and control
 consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = FALSE)
@@ -948,9 +986,9 @@ nl <- nl(nlversion = "6.2.2",
 
 consts <- list("wards-total" = wards_total,
                "bedspaces-per-ward" = bedspaces_per_ward,
-               "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
-               "admission-days" = 8.3,
-               "bay-proportion" = 0.6)
+               "antibiotic-prescription-rate" = antibiotic_prescription_rate, # Vesporten 2018
+               "admission-days" = admission_days,
+               "bay-proportion" = bay_proportion)
 
 # set outbreak and control
 consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
@@ -1085,9 +1123,9 @@ nl <- nl(nlversion = "6.2.2",
 
 consts <- list("wards-total" = wards_total,
                "bedspaces-per-ward" = bedspaces_per_ward,
-               "antibiotic-prescription-rate" = 0.319, # Vesporten 2018
-               "admission-days" = 8.3,
-               "bay-proportion" = 0.6)
+               "antibiotic-prescription-rate" = antibiotic_prescription_rate, # Vesporten 2018
+               "admission-days" = admission_days,
+               "bay-proportion" = bay_proportion)
 
 # set outbreak and control
 consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
