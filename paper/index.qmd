@@ -12,6 +12,8 @@ bibliography: references.bib
 
 ```{r, include=FALSE}
 
+run_sims <- FALSE
+
 # I could not get R code to run before, until I did this:
 # https://github.com/brentthorne/posterdown/issues/42
 
@@ -21,6 +23,7 @@ bibliography: references.bib
 library(tidyverse)
 library(abc)
 library(lhs)
+library(flextable)
 source(file.path("..", "calibrate.R"))
 # load(file.path("..", "out", "calibrate.RData"))
 ```
@@ -45,13 +48,13 @@ where:
 It was assumed that infection/colonisation was not reversible during the simulation, i.e., that infected/colonised patients remained so until discharge. At each time increment, the probability of a non-colonised/infected patient acquiring infection (i.e., transitioning from a non-infected/colonised to infected/colonised state) depended on: 1) a baseline risk of *de novo* infection/colonisation:
 
 $$ 
-P_\text{de novo}(t) = 1 - \exp {( - r_0 T(t) )},
+P_\text{de novo}(t) = 1 - \text{Exp} {( - r_0 T(t) )},
 $$
 
 and 2) the usage of contaminated toilets:
 
 $$
-P_\text{toilet}(t) = 1 - \exp ( {-\sum_{j=0}^{U_i(t)}[C(t_j) \cdot T(t)]} )
+P_\text{toilet}(t) = 1 - \text{Exp} ( {-\sum_{j=0}^{U_i(t)}[C(t_j) \cdot T(t)]} )
 $$
 
 where:
@@ -63,7 +66,7 @@ where:
 -   $T(t)$ is a binary indicator for antimicrobial therapy:
 
 $$
-\mathrm{T}(t) = \begin{cases}
+T(t) = \begin{cases}
     m & \text{if on antimicrobial therapy} \\ % & is your "\tab"-like command (it's a tab alignment character)
     1 & \text{otherwise.}
 \end{cases}
@@ -92,15 +95,15 @@ where $X_\text{toilet}$ = 1 if patient acquires infection/colonisation from a co
 The results of the trials were combined to determine the outcome for patient $i$ at time $t$:
 
 $$
-X_i(t) = \max(X_\text{de novo}, X_\text{toilet}),
+X_i(t) = \text{Max}(X_\text{de novo}, X_\text{toilet}),
 $$
 
 where $X_i(t)$ = 1 if patient $i$ acquires infection/colonisation at time $t$, and 0 otherwise.
 
-A deterministic representation of the model was described in terms of the following differential equations, an adaptation of *SI* (susceptible--infection) models [@anderson1991;@keeling2011]:
+A deterministic representation of the model was described in terms of the following differential equations, an adaptation of *SI* (susceptible--infection) models [@anderson1991; @keeling2011]:
 
 $$
-\frac{dS}{dt} = pA - D \cdot \frac{S}{S + I} - \beta S- rS
+\frac{dS}{dt} = pA - D \cdot \frac{S}{S + I} - \beta S - rS
 $$
 
 $$
@@ -115,10 +118,10 @@ where:
 -   $A$ is the rate of new admissions,
 -   $p$ is the proportion of new admissions that are susceptible/non-infected, while $(1 - p)$ is community colonisation/infection rate,
 -   $\beta$ is the transmission coefficient,
--   $r$ is the rate of random (_de novo_) colonisation/infection,
+-   $r$ is the rate of random (*de novo*) colonisation/infection,
 -   $D$ is the rate of patient discharges.
 
-The hospital capacity was constantly kept at 100% occupancy (i.e., patients were immediately replaced on discharge), therefore, $D = A$. 
+The hospital capacity was constantly kept at 100% occupancy (i.e., patients were immediately replaced on discharge), therefore, $D = A$.
 
 ## Model inputs and outputs
 
@@ -132,9 +135,9 @@ Data from a hospital *Clostridioides difficile* infection (CDI) outbreak reporte
 
 ## Model calibration
 
-Rejection sampling approximate Bayesian computation was employed to calibrate the model to the outbreak data [@sunnåker2013]. Priors were determined from domain knowledge or extracted from existing literature. The parameters in @tbl-consts were kept constant during the calibration process.
+Rejection sampling approximate Bayesian computation (ABC) was employed to calibrate the model to the outbreak data [@sunnåker2013]. Priors were determined from domain knowledge or extracted from existing literature. A summary of the priors used is available in @tbl-priors.
 
-Firstly, latin hypercube sampling was used to generate $n$ samples from the parameter prior distributions, using a uniform distribution, such that $\theta_1,\theta_2,\ldots,\theta_n$. Next, each sample parameter point $\theta_i$ was used as an input to the agent-based model, generating a total of $n$ simulated datasets. The number of daily cases of nosocomial CDI were extracted from the model outputs, and converted to a time series of nosocomial CDI per 1000 patient days for each month, generating simulated summary statistics $S_1,S_2,\ldots,S_n$. Results from the first 30 simulated days were discarded to ensure that the model had reached a steady state.
+Firstly, latin hypercube sampling was used to generate $n$ samples from the parameter prior distributions, using a uniform distribution, such that $\theta_1,\theta_2,\ldots,\theta_n$. Next, each sample parameter point $\theta_i$ was used as an input to the agent-based simulation model, generating a total of $n$ simulated datasets. The number of daily cases of nosocomial CDI were extracted from the model outputs, and converted to a time series of nosocomial CDI per 1000 patient days for each month, generating simulated summary statistics $S_1,S_2,\ldots,S_n$. Results from the first 31 simulated days were discarded to ensure that the model had reached a steady state.
 
 Each simulated summary statistic $S_i$ was compared to the summary statistic generated from the observed data, $S_\text{obs}$, and $S_i$ was accepted if:
 
@@ -148,17 +151,32 @@ where:
 
 -   $\epsilon$ is the tolerance.
 
-Otherwise, $S_i$ was rejected. The parameter samples that generated the accepted simulations were used to generate a posterior distribution.
+Otherwise, $S_i$ was rejected. The parameter samples that generated the accepted simulations were used to produce a posterior distribution. $\epsilon$ was set so that the acceptance rate was approximately 2.5%.
 
-Firstly, the model was calibrated to pre-outbreak data to identify parameters that simulated the baseline rate. Next, we simulated the emergence of an outbreak and its subsequent control by incrementally raising colonisation pressure over time (via increased antimicrobial consumption, toilet use, etc.) and enhancing infection control measures, respectively. Finally, the posterior parameter distributions were used to simulate 20 outbreaks.
+The approach to calibration was sequential. Firstly, ABC was used to calibrate the model pre-outbreak data to identify parameters that simulated the baseline rate. Next, the posterior distribution of the baseline rate model was used as a prior for a model that extended the simulation into the period of CDI outbreak and implementation of enhanced IPC measures (October 2004--May 2005 in the observed dataset) [@salgado2009]. To simulate the emergence of an outbreak, the model changed parameters at a discrete time point corresponding to the outbreak onset. The priors used for ABC were selected to be compatible with increased transmission or colonisation rates, for example increased antimicrobial exposure and decreased toilet cleaning frequency. At a subsequent discrete time point, the model again changed parameters to simulate enhanced infection control measures. The prior distributions for these parameters were selected to decrease transmission and colonisation -- generally the reverse of the 'outbreak' parameters.
 
-| Name                                                       | Value    | Description                                                             | Reference                |
-|------------------|------------------|-------------------|------------------|
-| Baseline (pre-outbreak) antimicrobial prescription rate    | 0.319    | Proportion of patients administered antimicrobials during admission     | @versporten2018          |
-| Admission duration                                         | 8.3 days | Mean of a Poisson distribution                                          | @thehealthfoundation2023 |
-| Proportion of toilets that are shared between \>1 patients | 0.6      | The remaining proportion (0.4) of toilets were dedicated to one patient | N/A                      |
+The posterior parameter distributions were used to simulate 20 outbreak scenarios. Parameter samples were drawn from a uniform distribution:
 
-: Parameters that were assumed to be constant during calibration. {#tbl-consts}
+$$
+U_[a,b] = U(\mu - \sigma, \mu + \sigma),
+$$
+
+where: $\mu$ and \$\sigma\$ are the mean and standard deviation of the posterior distribution, respectively. The simulated rates of nosocomial CDI were compared to the observed rates to assess the model's performance. One of the simulation runs was compared to the deterministic model, which was numerically integrated using Euler's method. Since the agent-based model was stochastic, all simulations were aggregated
+
+| Name                                                       | Distribution | Parameters                                                                                                   | Description                                                                     | Reference                                          |
+|---------------|---------------|---------------|---------------|---------------|
+| Baseline (pre-outbreak) antimicrobial prescription rate    | Constant     | 49.9%                                                                                                        | Proportion of patients administered antimicrobials during admission             | @versporten2018                                    |
+| Admission duration                                         | Poisson      | $\lambda = 4.6  \text{ days}$                                                                                |                                                                                 | @levitkryankelixhauserastrangesekassedccoffeyr2007 |
+| Proportion of toilets that are shared between \>1 patients | Constant     | 60%                                                                                                          | The remaining proportion (40%) of toilets were dedicated to one patient         | N/A                                                |
+| Community colonisation rate                                | Uniform      | $a = 0.01, b = 0.1$                                                                                          |                                                                                 | @crobach2018                                       |
+| Antimicrobial effect                                       | Uniform      | $ a = 1.31, b = 1.87 $                                                                                     | Odds ratio for effect of antimicrobial therapy on risk of hospital-acquired CDI | @slimings2014                                      |
+| CDI incidence                                              | Uniform      | $a=2.8, b=12.1$                               | Per 10,000 patient-days                                                         | @marra2020                                         |
+| Mean toilet frequenting rate                               | Uniform      | $a=0.5,b=5$                               | Per day; used as \lambda parameter for Poisson distribution                     |                                                    |
+| Mean toilet cleaning rate                                  | Uniform      | $a=0.5, b=3$                               | Per day; used as \lambda parameter for Poisson distribution                     |                                                    |
+| Toilet contamination effect                                | Uniform      | $a=0.01,b=0.99$                               | Contamination impact by infected/colonised patients through toilet use          |                                                    |
+| Toilet cleaning effect                                     | Uniform      | $a=0.01, b=0.99$                               | Impact of toilet cleaning on contamination                                      |                                                    |
+
+: Parameters that were assumed to be constant during calibration. {#tbl-priors}
 
 ![Screenshot of model graphical user interface during a simulation run](./images/screenshot.png){#fig-screenshot height="30%"}
 
@@ -166,9 +184,11 @@ Users can run the model interactively using the interface shown in @fig-screensh
 
 ## Outbreak generation
 
-To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced IPC measures. Changes in parameters such as increased antimicrobial prescription rates and decreased toilet cleaning frequency were used to encourage increased disease transmission, leading to an outbreak. On the other hand, these parameters were reversed to control the outbreak.
+To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced IPC measures. During calibration, the upper or lower bounds for parameter priors during the outbreak period were extended by 50% of baseline. For example, the upper bound of prior for the parameter determining the rate of antimicrobial prescriptions was 50% higher than the baseline rate. On the other hand, these parameters were reversed to control the outbreak.
 
-## Model availability
+## Software implementation
+
+The agent-based model was implemented in NetLogo v6.2.2 [@wilenskyu.1999]. The R package `nlrx` was used to execute simulations and transfer output data for analysis in R [@salecker2019; @rcoreteam2022].
 
 # Results
 
@@ -178,6 +198,64 @@ comm_colonisation <- round(mean(posteriors[, "community-colonisation-rate"] * 10
 outbreak_colonisation <- round(mean(posteriors[, "o-community-colonisation-rate"] * 100), 2)
 outbreak_antibiotic_rate <- round(mean(posteriors[, "o-antibiotic-prescription-rate"] * 100), 2)
 control_antibiotic_rate <- round(mean(posteriors[, "c-antibiotic-prescription-rate"] * 100), 2)
+```
+
+```{r, include=T}
+params_table <- abc_params_outbreak_control$unadj.values %>% 
+  as_tibble() %>% 
+  dplyr::select(!any_of(c("outbreak-start", "outbreak-end", "control-end"))) %>%
+  dplyr::rename_with(.fn = \(.x) paste0("b-", .x), .cols = !starts_with("o-") & !starts_with("c-")) %>% 
+  summarise(across(everything(), ~ paste0(
+    round(mean(.x), 2),
+    " (",
+    round(sd(.x), 2),
+    ")"
+    )))
+
+param_units <- c("toilet-frequenting-rate" = "times per day",
+                 "toilet-cleaning-rate" = "times per day",
+                 "toilet-contamination-effect" = "",
+                 "toilet-cleaning-effect" = "",
+                 "community-colonisation-rate" = "proportion of patients",
+                 "antibiotic-prescription-rate" = "proportion of admissions",
+                 "antibiotic-effect" = "relative risk",
+                 "random-colonisation" = "cases per 10,000 bed days")
+
+param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
+                 "toilet-cleaning-rate" = "Toilet cleaning rate",
+                 "toilet-contamination-effect" = "Toilet contamination effect",
+                 "toilet-cleaning-effect" = "Toilet cleaning effect",
+                 "community-colonisation-rate" = "Community colonisation rate",
+                 "antibiotic-prescription-rate" = "Antibiotic prescription rate",
+                 "antibiotic-effect" = "Antibiotic effect",
+                 "random-colonisation" = "Random colonisation")
+
+
+params_table %>% 
+  pivot_longer(cols = everything(), names_to = c("period", "param"), values_to = "value",
+               names_pattern = "(b|o|c)-(.*)") %>% 
+  pivot_wider(names_from = period, values_from = value) %>% 
+  # reorder cols
+  dplyr::select(param, b, o, c) %>% 
+  dplyr::rename(baseline = b, outbreak = o, control = c) %>% 
+  mutate(units = param) %>% 
+  relocate(units, .after = param) %>%
+  flextable() %>% 
+  labelizor(j = "units", part = "body",
+            labels = param_units) %>% 
+  labelizor(j = "param", part = "body",
+            labels = param_names)
+
+params_table %>% 
+  pivot_longer(cols = everything(), names_to = c("period", "param"), values_to = "value",
+               names_pattern = "(b|o|c)-(.*)") %>% 
+  pivot_wider(names_from = period, values_from = value) %>% 
+  # reorder cols
+  dplyr::select(param, b, o, c) %>% 
+  dplyr::rename(baseline = b, outbreak = o, control = c) %>% 
+  mutate(units = param) %>% 
+  relocate(units, .after = param) %>%
+  knitr::kable()
 ```
 
 After calibration, key parameters included: community colonisation rate of `r comm_colonisation`%, rising to `r outbreak_colonisation`% during the outbreak period. Furthermore, the proportion of patients prescribed an antimicrobial during their admission increased from `r consts[["antibiotic-prescription-rate"]] * 100`% to `r outbreak_antibiotic_rate`% during the outbreak; then reduced to `r control_antibiotic_rate`% during the period of enhanced infection control measures. The posterior parameter distributions are shown in @fig-posterior-densities. Simulated data had a pre-outbreak baseline median rate of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
@@ -306,7 +384,7 @@ single_outbreak_sim_mod %>%
 #   summarise(m = mean(prop_infected))
 ```
 
-```{r}
+```{r, cache=TRUE}
 # Parameters and time-dependent functions
 parameters <- list(
   # p = 1 - unique(single_outbreak_sim$`community-colonisation-rate`),      # Proportion of non-infected admissions
@@ -314,9 +392,9 @@ parameters <- list(
 )
 # 
 
-single_seeds <- single_outbreak_sim$`random-seed`
+single_seeds <- unique(single_outbreak_sim$`random-seed`)
 single_outbreak_one_seed <- single_outbreak_sim_mod %>% 
-  filter(`random-seed` == single_seeds[1])
+  filter(`random-seed` == single_seeds[3])
 
 target_baseline_rate <- single_outbreak_one_seed %>%
   filter(`[step]` > 30 & `[step]` < 200) %>%
@@ -360,7 +438,10 @@ beta_function <- function(t, baseline_rate, outbreak_rate) {
 run_to <- max(single_outbreak_sim$`[step]`)
 
 # Initial conditions
-initial_state <- c(N = 600, I = 17)  # Initial populations of non-infected and infected patients
+total_patients <- unique(single_outbreak_one_seed$`current-inpatients`)
+init_N <- unique(single_outbreak_one_seed$`community-colonisation-rate`) * total_patients
+init_I <- total_patients - init_N
+initial_state <- c(N = init_N, I = init_I)  # Initial populations of non-infected and infected patients
 time <- seq(0, run_to, by = 1)         # Time steps
 dt <- 1                             # Time step size
 
@@ -471,7 +552,8 @@ single_outbreak_one_seed %>%
        y = "Number of Patients",
        color = "Compartment") +
   geom_line(data = output_df, aes(x = time, y = N), color = "blue") + 
-  geom_line(data = output_df, aes(x = time, y = I), color = "red")
+  geom_line(data = output_df, aes(x = time, y = I), color = "red") +
+  xlim(500, 2000)
 ```
 
 # Discussion
