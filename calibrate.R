@@ -5,10 +5,12 @@ library(lubridate)
 library(abc)
 library(progressr)
 handlers("cli")
+wards_total <- 9
+bedspaces_per_ward <- 9
 set.seed(42)
 
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
-model_path <- "../salgado_v0.42_day_time.nlogo"
+model_path <- "../models/salgado_v0.43.nlogo"
 out_path <- "../out/"
 data_path <- "../data/"
 
