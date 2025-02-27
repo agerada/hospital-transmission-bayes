@@ -8,3 +8,12 @@ r-xml
 r-raster
 r-sf 
 r-igraph
+
+# Poster
+
+To generate poster, install the `quarto` poster template:
+
+```bash
+cd poster
+quarto use template quarto-ext/typst-templates/poster
+```
