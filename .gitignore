@@ -12,6 +12,7 @@ paper/**/*.docx
 # Session Data files
 .RData
 .RDataTmp
+*.Rdata
 
 # User-specific files
 .Ruserdata
