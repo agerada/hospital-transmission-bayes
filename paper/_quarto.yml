@@ -1,9 +1,3 @@
-project:
-  type: manuscript
-
-manuscript:
-  article: index.qmd
-
 format:
   pdf: default
 
@@ -15,4 +9,4 @@ execute:
 
 bibliography: references.bib
 
-
+keep-tex: true
