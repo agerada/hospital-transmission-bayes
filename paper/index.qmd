@@ -10,8 +10,8 @@ bibliography: references.bib
 
 # Background
 
-```{r, include=FALSE}
-
+```{r setup, include=FALSE}
+# here::i_am("paper/index.qmd")
 run_sims <- FALSE
 
 # I could not get R code to run before, until I did this:
@@ -24,11 +24,21 @@ library(tidyverse)
 library(abc)
 library(lhs)
 library(flextable)
-source(file.path("..", "calibrate.R"))
+```
+
+```{r}
+# print(here::here())
+# file.exists(here::here("scripts", "calibrate.R"))
+```
+
+```{r load-data, include=FALSE}
+# print(file.exists(here::here("scripts", "calibrate.R")))
+# source(here::here("scripts", "calibrate.R"))
+source(file.path("..", "scripts", "calibrate.R"), chdir = TRUE)
 # load(file.path("..", "out", "calibrate.RData"))
 ```
 
-Transmission of potentially pathogenic bacteria under antimicrobial selective pressure has important implications for control of hospital-acquired infection. Examples include *Clostridioides difficile* infection (CDI) and Vancomycin-resistant *Enterococcus*. In addition to patient factors, colonisation risk depends on environmental factors (e.g., surface cleaning), proximity to other colonised patients, and use of antimicrobial agents. To guide infection control strategies, especially during outbreaks, we developed an agent-based simulator and estimated its parameters using data from a CDI outbreak documented by Salgado et al @salgado2009.
+Transmission of potentially pathogenic bacteria under antimicrobial selective pressure has important implications for control of hospital-acquired infection. Examples include *Clostridioides difficile* infection (CDI) and Vancomycin-resistant *Enterococcus*. In addition to patient factors, colonisation risk depends on environmental factors (e.g., surface cleaning), proximity to other colonised patients, and use of antimicrobial agents. To guide infection control strategies, especially during outbreaks, we developed an agent-based simulator and estimated its parameters using data from a CDI outbreak documented by @salgadoAnalysisOutbreakClostridium2009.
 
 # Methods
 
@@ -100,7 +110,7 @@ $$
 
 where $X_i(t)$ = 1 if patient $i$ acquires infection/colonisation at time $t$, and 0 otherwise.
 
-A deterministic representation of the model was described in terms of the following differential equations, an adaptation of *SI* (susceptible--infection) models [@anderson1991; @keeling2011]:
+A deterministic representation of the model was described in terms of the following differential equations, an adaptation of *SI* (susceptible--infection) models [@andersonDiscussionKermackMcKendrickEpidemic1991; @keelingModelingInfectiousDiseases2011]:
 
 $$
 \frac{dS}{dt} = pA - D \cdot \frac{S}{S + I} - \beta S - rS
@@ -131,11 +141,11 @@ The outputs of the model included: 1) number of patients admitted; 2) number of 
 
 ## Data sources
 
-Data from a hospital *Clostridioides difficile* infection (CDI) outbreak reported by Salgado et al was used to parameterise and calibrate the model [@salgado2009]. Raw data from this study were not available, therefore, the Engauge digitizer software was used to extract observed CDI rates from the manuscript's figures [@mitchell2020].
+Data from a hospital *Clostridioides difficile* infection (CDI) outbreak reported by Salgado et al was used to parameterise and calibrate the model [@salgado2009]. Raw data from this study were not available, therefore, the Engauge digitizer software was used to extract observed CDI rates from the manuscript's figures [@mitchellEngaugeDigitizer2020].
 
 ## Model calibration
 
-Rejection sampling approximate Bayesian computation (ABC) was employed to calibrate the model to the outbreak data [@sunnåker2013]. Priors were determined from domain knowledge or extracted from existing literature. A summary of the priors used is available in @tbl-priors.
+Rejection sampling approximate Bayesian computation (ABC) was employed to calibrate the model to the outbreak data [@sunnakerApproximateBayesianComputation2013]. Priors were determined from domain knowledge or extracted from existing literature. A summary of the priors used is available in @tbl-priors.
 
 Firstly, latin hypercube sampling was used to generate $n$ samples from the parameter prior distributions, using a uniform distribution, such that $\theta_1,\theta_2,\ldots,\theta_n$. Next, each sample parameter point $\theta_i$ was used as an input to the agent-based simulation model, generating a total of $n$ simulated datasets. The number of daily cases of nosocomial CDI were extracted from the model outputs, and converted to a time series of nosocomial CDI per 1000 patient days for each month, generating simulated summary statistics $S_1,S_2,\ldots,S_n$. Results from the first 31 simulated days were discarded to ensure that the model had reached a steady state.
 
@@ -163,18 +173,18 @@ $$
 
 where: $\mu$ and \$\sigma\$ are the mean and standard deviation of the posterior distribution, respectively. The simulated rates of nosocomial CDI were compared to the observed rates to assess the model's performance. One of the simulation runs was compared to the deterministic model, which was numerically integrated using Euler's method. Since the agent-based model was stochastic, all simulations were aggregated
 
-| Name                                                       | Distribution | Parameters                                                                                                   | Description                                                                     | Reference                                          |
+| Name | Distribution | Parameters | Description | Reference |
 |---------------|---------------|---------------|---------------|---------------|
-| Baseline (pre-outbreak) antimicrobial prescription rate    | Constant     | 49.9%                                                                                                        | Proportion of patients administered antimicrobials during admission             | @versporten2018                                    |
-| Admission duration                                         | Poisson      | $\lambda = 4.6  \text{ days}$                                                                                |                                                                                 | @levitkryankelixhauserastrangesekassedccoffeyr2007 |
-| Proportion of toilets that are shared between \>1 patients | Constant     | 60%                                                                                                          | The remaining proportion (40%) of toilets were dedicated to one patient         | N/A                                                |
-| Community colonisation rate                                | Uniform      | $a = 0.01, b = 0.1$                                                                                          |                                                                                 | @crobach2018                                       |
-| Antimicrobial effect                                       | Uniform      | $ a = 1.31, b = 1.87 $                                                                                     | Odds ratio for effect of antimicrobial therapy on risk of hospital-acquired CDI | @slimings2014                                      |
-| CDI incidence                                              | Uniform      | $a=2.8, b=12.1$                               | Per 10,000 patient-days                                                         | @marra2020                                         |
-| Mean toilet frequenting rate                               | Uniform      | $a=0.5,b=5$                               | Per day; used as \lambda parameter for Poisson distribution                     |                                                    |
-| Mean toilet cleaning rate                                  | Uniform      | $a=0.5, b=3$                               | Per day; used as \lambda parameter for Poisson distribution                     |                                                    |
-| Toilet contamination effect                                | Uniform      | $a=0.01,b=0.99$                               | Contamination impact by infected/colonised patients through toilet use          |                                                    |
-| Toilet cleaning effect                                     | Uniform      | $a=0.01, b=0.99$                               | Impact of toilet cleaning on contamination                                      |                                                    |
+| Baseline (pre-outbreak) antimicrobial prescription rate | Constant | 49.9% | Proportion of patients administered antimicrobials during admission | @versportenAntimicrobialConsumptionResistance2018 |
+| Admission duration | Poisson | $\lambda = 4.6  \text{ days}$ |  | @levitkryankelixhauserastrangesekassedccoffeyrHCUPFactsFigures2007 |
+| Proportion of toilets that are shared between \>1 patients | Constant | 60% | The remaining proportion (40%) of toilets were dedicated to one patient | N/A |
+| Community colonisation rate | Uniform | $a = 0.01, b = 0.1$ |  | @crobachUnderstandingClostridiumDifficile2018 |
+| Antimicrobial effect | Uniform | \$ a = 1.31, b = 1.87 \$ | Odds ratio for effect of antimicrobial therapy on risk of hospital-acquired CDI | @slimingsAntibioticsHospitalacquiredClostridium2014 |
+| CDI incidence | Uniform | $a=2.8, b=12.1$ | Per 10,000 patient-days | @marraIncidenceOutcomesAssociated2020 |
+| Mean toilet frequenting rate | Uniform | $a=0.5,b=5$ | Per day; used as \lambda parameter for Poisson distribution |  |
+| Mean toilet cleaning rate | Uniform | $a=0.5, b=3$ | Per day; used as \lambda parameter for Poisson distribution |  |
+| Toilet contamination effect | Uniform | $a=0.01,b=0.99$ | Contamination impact by infected/colonised patients through toilet use |  |
+| Toilet cleaning effect | Uniform | $a=0.01, b=0.99$ | Impact of toilet cleaning on contamination |  |
 
 : Parameters that were assumed to be constant during calibration. {#tbl-priors}
 
@@ -188,7 +198,7 @@ To simulate the generation of outbreaks and their subsequent control through enh
 
 ## Software implementation
 
-The agent-based model was implemented in NetLogo v6.2.2 [@wilenskyu.1999]. The R package `nlrx` was used to execute simulations and transfer output data for analysis in R [@salecker2019; @rcoreteam2022].
+The agent-based model was implemented in NetLogo v6.2.2 [@wilenskyu.NetLogo1999]. The R package `nlrx` was used to execute simulations and transfer output data for analysis in R [@rcoreteamLanguageEnvironmentStatistical2022; @saleckerNlrxPackageNextgeneration2019].
 
 # Results
 
@@ -201,6 +211,9 @@ control_antibiotic_rate <- round(mean(posteriors[, "c-antibiotic-prescription-ra
 ```
 
 ```{r, include=T}
+#| tbl-cap: "Summary of parameter posteriors after calibration using Approximate bayesian computation."
+#| label: tbl-posteriors
+#| echo: false
 params_table <- abc_params_outbreak_control$unadj.values %>% 
   as_tibble() %>% 
   dplyr::select(!any_of(c("outbreak-start", "outbreak-end", "control-end"))) %>%
@@ -230,7 +243,6 @@ param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
                  "antibiotic-effect" = "Antibiotic effect",
                  "random-colonisation" = "Random colonisation")
 
-
 params_table %>% 
   pivot_longer(cols = everything(), names_to = c("period", "param"), values_to = "value",
                names_pattern = "(b|o|c)-(.*)") %>% 
@@ -244,18 +256,11 @@ params_table %>%
   labelizor(j = "units", part = "body",
             labels = param_units) %>% 
   labelizor(j = "param", part = "body",
-            labels = param_names)
-
-params_table %>% 
-  pivot_longer(cols = everything(), names_to = c("period", "param"), values_to = "value",
-               names_pattern = "(b|o|c)-(.*)") %>% 
-  pivot_wider(names_from = period, values_from = value) %>% 
-  # reorder cols
-  dplyr::select(param, b, o, c) %>% 
-  dplyr::rename(baseline = b, outbreak = o, control = c) %>% 
-  mutate(units = param) %>% 
-  relocate(units, .after = param) %>%
-  knitr::kable()
+            labels = param_names) %>% 
+  width(width = 1) %>% 
+  font(fontname="Times New Roman",
+       part = "all") %>% 
+  fontsize(size = 10, part = "all")
 ```
 
 After calibration, key parameters included: community colonisation rate of `r comm_colonisation`%, rising to `r outbreak_colonisation`% during the outbreak period. Furthermore, the proportion of patients prescribed an antimicrobial during their admission increased from `r consts[["antibiotic-prescription-rate"]] * 100`% to `r outbreak_antibiotic_rate`% during the outbreak; then reduced to `r control_antibiotic_rate`% during the period of enhanced infection control measures. The posterior parameter distributions are shown in @fig-posterior-densities. Simulated data had a pre-outbreak baseline median rate of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
@@ -530,15 +535,6 @@ output_df <- filter(output_df, time > 31)
 # Plot the results
 library(ggplot2)
 output_long <- reshape2::melt(output_df, id = "time")
-ggplot(output_long, aes(x = time, y = value, color = variable)) +
-  geom_line(size = 1) +
-  labs(title = "Dynamics of Non-Infected and Infected Patients (Time-Varying Beta)",
-       x = "Time",
-       y = "Number of Patients",
-       color = "Compartment") +
-  scale_color_manual(values = c("blue", "red"),
-                     labels = c("Non-Infected (N)", "Infected (I)")) +
-  theme_minimal()
 
 single_outbreak_one_seed %>% 
   pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
