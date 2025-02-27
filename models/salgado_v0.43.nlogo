@@ -303,7 +303,6 @@ to update-patients
     let de-novo-event 1 - exp ( - ( random-colonisation * ( 1 / 10000 ) ) * abx-multiplier )
     if random-float 1 < de-novo-event
     [
-      show "colonising"
       set colonised? true
       set color red
       set hospital-infection? true
