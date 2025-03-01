@@ -44,7 +44,7 @@ Transmission of potentially pathogenic bacteria under antimicrobial selective pr
 
 ## Agent-based model
 
-An agent-based model (ABM) was implemented using NetLogo [@wilenskyu.1999]. Briefly, the simulation started by building a virtual hospital with a configurable high-level structure, defined by its number of wards, beds per ward, and proportion of bedspaces sharing toilet facilities. Next, the hospital was populated with patients, each having an infected/colonised or non-infected/colonised state, defined as:
+An agent-based model (ABM) was implemented using NetLogo [@wilenskyu.NetLogo1999]. Briefly, the simulation started by building a virtual hospital with a configurable high-level structure, defined by its number of wards, beds per ward, and proportion of bedspaces sharing toilet facilities. Next, the hospital was populated with patients, each having an infected/colonised or non-infected/colonised state, defined as:
 
 $$
 x_p(t) \epsilon \{0, 1\}
@@ -141,9 +141,9 @@ The outputs of the model included: 1) number of patients admitted; 2) number of 
 
 ## Data sources
 
-Data from a hospital *Clostridioides difficile* infection (CDI) outbreak reported by Salgado et al was used to parameterise and calibrate the model [@salgado2009]. Raw data from this study were not available, therefore, the Engauge digitizer software was used to extract observed CDI rates from the manuscript's figures [@mitchellEngaugeDigitizer2020].
+Data from a hospital *Clostridioides difficile* infection (CDI) outbreak reported by Salgado et al was used to parameterise and calibrate the model [@salgadoAnalysisOutbreakClostridium2009]. Raw data from this study were not available, therefore, the Engauge digitizer software was used to extract observed CDI rates from the manuscript's figures [@mitchellEngaugeDigitizer2020].
 
-## Model calibration
+## Model calibration {#sec-model-calibration}
 
 Rejection sampling approximate Bayesian computation (ABC) was employed to calibrate the model to the outbreak data [@sunnakerApproximateBayesianComputation2013]. Priors were determined from domain knowledge or extracted from existing literature. A summary of the priors used is available in @tbl-priors.
 
@@ -163,9 +163,9 @@ where:
 
 Otherwise, $S_i$ was rejected. The parameter samples that generated the accepted simulations were used to produce a posterior distribution. $\epsilon$ was set so that the acceptance rate was approximately 2.5%.
 
-The approach to calibration was sequential. Firstly, ABC was used to calibrate the model pre-outbreak data to identify parameters that simulated the baseline rate. Next, the posterior distribution of the baseline rate model was used as a prior for a model that extended the simulation into the period of CDI outbreak and implementation of enhanced IPC measures (October 2004--May 2005 in the observed dataset) [@salgado2009]. To simulate the emergence of an outbreak, the model changed parameters at a discrete time point corresponding to the outbreak onset. The priors used for ABC were selected to be compatible with increased transmission or colonisation rates, for example increased antimicrobial exposure and decreased toilet cleaning frequency. At a subsequent discrete time point, the model again changed parameters to simulate enhanced infection control measures. The prior distributions for these parameters were selected to decrease transmission and colonisation -- generally the reverse of the 'outbreak' parameters.
+The approach to calibration was sequential. Firstly, ABC was used to calibrate the model pre-outbreak data to identify parameters that simulated the baseline rate. Next, the posterior distribution of the baseline rate model was used as a prior for a model that extended the simulation into the period of CDI outbreak and implementation of enhanced IPC measures (October 2004--May 2005 in the observed dataset) [@salgadoAnalysisOutbreakClostridium2009]. To simulate the emergence of an outbreak, the model changed parameters at a discrete time point corresponding to the outbreak onset. The priors used for ABC were selected to be compatible with increased transmission or colonisation rates, for example increased antimicrobial exposure and decreased toilet cleaning frequency. At a subsequent discrete time point, the model again changed parameters to simulate enhanced infection control measures. The prior distributions for these parameters were selected to decrease transmission and colonisation -- generally the reverse of the 'outbreak' parameters.
 
-The posterior parameter distributions were used to simulate 20 outbreak scenarios. Parameter samples were drawn from a uniform distribution:
+The posterior parameter distributions were used to simulate `r length(unique(consts_sim$siminputrow))` outbreak scenarios. Parameter samples were drawn from a uniform distribution:
 
 $$
 U_[a,b] = U(\mu - \sigma, \mu + \sigma),
@@ -186,15 +186,24 @@ where: $\mu$ and \$\sigma\$ are the mean and standard deviation of the posterior
 | Toilet contamination effect | Uniform | $a=0.01,b=0.99$ | Contamination impact by infected/colonised patients through toilet use |  |
 | Toilet cleaning effect | Uniform | $a=0.01, b=0.99$ | Impact of toilet cleaning on contamination |  |
 
-: Parameters that were assumed to be constant during calibration. {#tbl-priors}
+: Parameter prior distributions or constants. {#tbl-priors}
 
 ![Screenshot of model graphical user interface during a simulation run](./images/screenshot.png){#fig-screenshot height="30%"}
 
 Users can run the model interactively using the interface shown in @fig-screenshot.
 
-## Outbreak generation
+## Outbreak generation {#sec-outbreak-generation}
 
 To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced IPC measures. During calibration, the upper or lower bounds for parameter priors during the outbreak period were extended by 50% of baseline. For example, the upper bound of prior for the parameter determining the rate of antimicrobial prescriptions was 50% higher than the baseline rate. On the other hand, these parameters were reversed to control the outbreak.
+
+## Sensitivity analysis {#sec-sens-analysis}
+
+```{r, include=FALSE}
+sens_n_seeds <- length(unique(consts_sim$siminputrow))
+```
+
+
+To assess the sensitivity of the calibrated model to changes in parameters, a single-parameter local sensitivity analysis was performed [@railsback232SensitivityAnalysis2019]. Four parameters that reflected modifiable infection control practices were chosen for the sensitivity analysis: 1) antimicrobial prescription rates; 2) proportion of patients redistributed to a single-occupancy bed after colonisation/infection; 3) toilet cleaning rate; and 4) toilet cleaning effect. To conduct the sensitivity analysis, all the parameters except the one of interest were fixed at the posterior mean values, determined using the rejection ABC. Next, the parameter of interest was varied through a range of values, and used as an input to the simulation model at each value. The output metric was the number of cases of hospital-acquired infection/colonisation within the outbreak period. For each parameter value, the simulation was run with `r sens_n_seeds` different random number generator seeds to account for stochasticity in the model -- the output metric was the mean number of cases across the `r sens_n_seeds` runs.
 
 ## Software implementation
 
@@ -202,20 +211,28 @@ The agent-based model was implemented in NetLogo v6.2.2 [@wilenskyu.NetLogo1999]
 
 # Results
 
-```{r, echo=FALSE}
+```{r, include=FALSE}
 posteriors <- abc_params_outbreak_control$unadj.values
 comm_colonisation <- round(mean(posteriors[, "community-colonisation-rate"] * 100), 2)
 outbreak_colonisation <- round(mean(posteriors[, "o-community-colonisation-rate"] * 100), 2)
 outbreak_antibiotic_rate <- round(mean(posteriors[, "o-antibiotic-prescription-rate"] * 100), 2)
 control_antibiotic_rate <- round(mean(posteriors[, "c-antibiotic-prescription-rate"] * 100), 2)
+b_toilet_clean_rate <- round(mean(posteriors[, "toilet-cleaning-rate"]), 2)
+o_toilet_clean_rate <- round(mean(posteriors[, "o-toilet-cleaning-rate"]), 2)
+c_toilet_clean_rate <- round(mean(posteriors[, "c-toilet-cleaning-rate"]), 2)
 ```
 
-```{r, include=T}
+An agent-based model that simulates the faecal-oral transmission of infection or colonisation in a hospital setting was produced. After calibrating the agent-based model using approximate Bayesian computation (ABC), three groups of parameters were produced: 1) baseline parameters, which aimed to generate similar rates of infection to the basal rate (i.e., pre- and post-outbreak); 2) outbreak parameters, which led to the increased transmission observed during the outbreak period; and 3) control parameters, which reflect enhanced infection control practice that led to outbreak control. A summary of the posterior estimates of the parameters (reported as the mean and standard deviation of the parameters from the rejection ABC) is shown in @tbl-posteriors. The densities of the posterior parameter distributions are shown in @fig-posterior-densities. In line with the prior bounds described in @sec-outbreak-generation, the posterior distributions of the parameters were consistent with the expected changes in the parameters during the outbreak and control periods (e.g., the toilet cleaning rate changed from `r b_toilet_clean_rate` to `r o_toilet_clean_rate`, and to `r c_toilet_clean_rate` during the baseline, outbreak, and control periods respectively).
+
+```{r tbl-posteriors, include=TRUE}
 #| tbl-cap: "Summary of parameter posteriors after calibration using Approximate bayesian computation."
-#| label: tbl-posteriors
 #| echo: false
 params_table <- abc_params_outbreak_control$unadj.values %>% 
   as_tibble() %>% 
+  mutate("community-colonisation-rate" = `community-colonisation-rate` * 100,
+         "o-community-colonisation-rate" = `o-community-colonisation-rate` * 100,
+         "o-antibiotic-prescription-rate" = `o-antibiotic-prescription-rate` * 100,
+         "c-antibiotic-prescription-rate" = `c-antibiotic-prescription-rate` * 100) %>% 
   dplyr::select(!any_of(c("outbreak-start", "outbreak-end", "control-end"))) %>%
   dplyr::rename_with(.fn = \(.x) paste0("b-", .x), .cols = !starts_with("o-") & !starts_with("c-")) %>% 
   summarise(across(everything(), ~ paste0(
@@ -229,10 +246,11 @@ param_units <- c("toilet-frequenting-rate" = "times per day",
                  "toilet-cleaning-rate" = "times per day",
                  "toilet-contamination-effect" = "",
                  "toilet-cleaning-effect" = "",
-                 "community-colonisation-rate" = "proportion of patients",
-                 "antibiotic-prescription-rate" = "proportion of admissions",
+                 "community-colonisation-rate" = "percentage of patients",
+                 "antibiotic-prescription-rate" = "percentage of admissions",
                  "antibiotic-effect" = "relative risk",
-                 "random-colonisation" = "cases per 10,000 bed days")
+                 "random-colonisation" = "cases per 10,000 bed days",
+                 "proportion-redistributed" = "proportion of patients")
 
 param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
                  "toilet-cleaning-rate" = "Toilet cleaning rate",
@@ -241,7 +259,8 @@ param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
                  "community-colonisation-rate" = "Community colonisation rate",
                  "antibiotic-prescription-rate" = "Antibiotic prescription rate",
                  "antibiotic-effect" = "Antibiotic effect",
-                 "random-colonisation" = "Random colonisation")
+                 "random-colonisation" = "Random colonisation",
+                 "proportion-redistributed" = "Proportion redistributed")
 
 params_table %>% 
   pivot_longer(cols = everything(), names_to = c("period", "param"), values_to = "value",
@@ -263,9 +282,7 @@ params_table %>%
   fontsize(size = 10, part = "all")
 ```
 
-After calibration, key parameters included: community colonisation rate of `r comm_colonisation`%, rising to `r outbreak_colonisation`% during the outbreak period. Furthermore, the proportion of patients prescribed an antimicrobial during their admission increased from `r consts[["antibiotic-prescription-rate"]] * 100`% to `r outbreak_antibiotic_rate`% during the outbreak; then reduced to `r control_antibiotic_rate`% during the period of enhanced infection control measures. The posterior parameter distributions are shown in @fig-posterior-densities. Simulated data had a pre-outbreak baseline median rate of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
-
-```{r}
+```{r fig-posterior-densities, include=TRUE}
 #| eval: true
 #| echo: false
 #| fig.width: 18
@@ -336,7 +353,9 @@ abc_params_outbreak_control$unadj.values %>%
   scale_fill_manual(values = c("Baseline" = "green", "Outbreak" = "red", "Control" = "blue"))
 ```
 
-```{r}
+Using the posterior distributions as inputs to the simulation model, as described in @sec-model-calibration, the model was able to generate scenarios of outbreaks that closely matched the observed data (see @fig-simulated-rates). In these simulated scenarios, the pre-outbreak baseline rate was a median of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
+
+```{r fig-simulated-rates, include=TRUE}
 #| echo: false
 #| label: fig-simulated-rates
 #| fig.cap: "Observed and simulated rates of _C. difficile_ infection over the simulated period. Approximate Bayesian computation was used to determine the unobserved parameters of the agent-based model. The red line shows the true observed infection rates. The black solid line shows the mean simulated rates; the dashed lines show the standard deviation."
@@ -350,11 +369,10 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
   xlab("Date") + ylab("Rate (cases per 1000 patient days)")
 ```
 
-```{r}
+```{r, include=FALSE}
 #| echo: false
 #| fig.width: 18
 #| fig.height: 8
-#| include: false
 #| message: false
 consts_sim_rates %>% 
   pivot_wider(names_from = date_sim, values_from = rate) %>% 
@@ -371,7 +389,7 @@ consts_sim_rates %>%
   guides(color="none")
 ```
 
-```{r}
+```{r, include=FALSE}
 single_outbreak_sim_mod <- single_outbreak_sim %>% 
   mutate(prop_infected = `current-colonised` / `current-inpatients`,
          current_not_infected = `current-inpatients` - `current-colonised`)
@@ -389,7 +407,46 @@ single_outbreak_sim_mod %>%
 #   summarise(m = mean(prop_infected))
 ```
 
-```{r, cache=TRUE}
+The sensitivity analysis explored the impact of different infection control practices on the number of cases observed during the outbreak period -- the results are shown in @fig-sensitivity-analysis. The analysis showed that the cleaning of toilets had a dramatic impact on the number of cases observed during the outbreak period, although the benefit appeared to plateaeu beyond a certain amount -- for example, cleaning toilets more than twice per day appeared to have marginal benefits. The number of hospital acquired cases did not appear to be sensitive to the antimicrobial prescription rate.
+
+```{r fig-sensitivity-analysis, include=TRUE}
+#| echo: false
+list(abx_prescription_rate = sens_abx_prescription_outbreak_cases,
+     proportion_redistributed = sens_prop_redist_outbreak_cases,
+     toilet_cleaning_rate = sens_toilet_cleaning_rate_outbreak_cases,
+     toilet_cleaning_effect = sens_toilet_cleaning_effect_outbreak_cases) %>%
+  bind_rows() %>% 
+  pivot_longer(cols = starts_with("c-"),
+               names_to = "param",
+               values_drop_na = TRUE) %>% 
+  group_by(param, value) %>% 
+  summarise(mean_cases = mean(`outbreak-cases`),
+            sd_cases = sd(`outbreak-cases`),
+            .groups = "keep") %>% 
+  ggplot(aes(x = value, y = mean_cases)) + 
+  geom_line() + 
+  # shade sd
+  geom_ribbon(aes(ymin = mean_cases - sd_cases, ymax = mean_cases + sd_cases), alpha = 0.2) +
+  facet_wrap(~ param, scales = "free")
+```
+
+```{r}
+sens_prop_redist_perfect_clean_outbreak_cases %>% pivot_longer(cols = `c-proportion-redistributed`,
+               names_to = "param",
+               values_drop_na = TRUE) %>% 
+  group_by(param, value) %>% 
+  summarise(mean_cases = mean(`outbreak-cases`),
+            sd_cases = sd(`outbreak-cases`),
+            .groups = "keep") %>% 
+  ggplot(aes(x = value, y = mean_cases)) + 
+  geom_line() + 
+  # shade sd
+  geom_ribbon(aes(ymin = mean_cases - sd_cases, ymax = mean_cases + sd_cases), alpha = 0.2) +
+  facet_wrap(~ param, scales = "free")
+```
+
+
+```{r run-deterministic-model, include=FALSE, cache=TRUE}
 # Parameters and time-dependent functions
 parameters <- list(
   # p = 1 - unique(single_outbreak_sim$`community-colonisation-rate`),      # Proportion of non-infected admissions
@@ -531,9 +588,10 @@ output_df <- data.frame(
 )
 
 output_df <- filter(output_df, time > 31)
+```
 
-# Plot the results
-library(ggplot2)
+```{r fig-single-outbreak, include=TRUE}
+#| echo: false
 output_long <- reshape2::melt(output_df, id = "time")
 
 single_outbreak_one_seed %>% 
@@ -555,3 +613,5 @@ single_outbreak_one_seed %>%
 # Discussion
 
 Repeated simulations using the model generated nosocomial CDI rates that showed a clear outbreak peak, followed by control of colonisation/infection through a change in infection control practice, resembling a real hospital CDI outbreak. The interactive nature of the model can be used for outbreak preparedness by testing out different infection control strategies. In summary, we report a pathogen-agnostic model that can be used to simulate any infection with features such as faecal-oral transmission, colonisation, and antimicrobial selective pressure effects.
+
+
