@@ -89,7 +89,7 @@ to setup
   set total-colonised 0
   setup-grid
 
-  set all-toilets patches with [ toilet? = false ]
+  set all-toilets patches with [ toilet? = true ]
   set all-bedspaces patches with [ toilet? = false and bed-number > 0 ]
   set bay-bedspaces all-bedspaces with [ bay? ]
   set side-room-bedspaces all-bedspaces with [ not bay? ]
@@ -431,6 +431,7 @@ to redistribute-patients
       ] [
 ;        set color blue
         ;debug show (word "Swapping locations with " swap-candidate ", xcor: " [xcor] of swap-candidate ", ycor: " [ycor] of swap-candidate )
+        clean-toilets
         let tmp-xcor xcor
         let tmp-ycor ycor
         let tmp-my-toilet my-toilet
@@ -441,6 +442,7 @@ to redistribute-patients
         set my-bedspaces [my-bedspaces] of swap-candidate
         ask swap-candidate [
 ;          set color yellow
+          clean-toilets
           set xcor tmp-xcor
           set ycor tmp-ycor
           set my-toilet tmp-my-toilet
@@ -459,6 +461,7 @@ to discharge-patient
     set bed-availability bed-availability + 1
   ]
   ask patch-here [ make-patient ]
+  clean-toilets
   die
 end
 
@@ -631,7 +634,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.402
+0.822
 0.05
 1
 NIL
@@ -661,7 +664,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.79
+0.741
 0.05
 1
 NIL
@@ -676,7 +679,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-3.38
+3.794
 0.1
 1
 NIL
@@ -691,7 +694,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-1.448
+5.165
 0.1
 1
 NIL
@@ -706,7 +709,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.039
+0.03
 0.01
 1
 NIL
@@ -770,7 +773,7 @@ antibiotic-prescription-rate
 antibiotic-prescription-rate
 0
 1
-0.283
+0.376
 0.001
 1
 NIL
@@ -785,7 +788,7 @@ antibiotic-effect
 antibiotic-effect
 0
 100
-3.586
+1.557
 0.1
 1
 RR/OR
@@ -833,7 +836,7 @@ SWITCH
 249
 outbreak?
 outbreak?
-0
+1
 1
 -1000
 
@@ -846,7 +849,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1012.991
+1028.516
 1
 1
 ticks
@@ -861,7 +864,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-3.969
+5.165
 0.1
 1
 NIL
@@ -876,7 +879,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.684
+0.822
 0.01
 1
 NIL
@@ -891,7 +894,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.434
+0.37
 0.01
 1
 NIL
@@ -906,7 +909,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-2.481
+1.486
 0.1
 1
 NIL
@@ -921,7 +924,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.059
+0.03
 0.01
 1
 NIL
@@ -936,7 +939,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.446
+0.636
 0.01
 1
 NIL
@@ -977,7 +980,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.843
+0.741
 0.01
 1
 NIL
@@ -992,7 +995,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-4.4
+3.794
 0.1
 1
 NIL
@@ -1007,7 +1010,7 @@ c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
-0.272
+0.376
 0.01
 1
 NIL
@@ -1022,7 +1025,7 @@ outbreak-end
 outbreak-end
 1
 10000
-1244.326
+1283.066
 1
 1
 NIL
@@ -1037,7 +1040,7 @@ control-end
 control-end
 1
 10000
-1336.188
+1340.953
 1
 1
 NIL
@@ -1069,7 +1072,7 @@ random-colonisation
 random-colonisation
 0
 1000
-5.6
+6.796
 0.1
 1
 cases per 10,000 bed days
@@ -1113,7 +1116,7 @@ proportion-redistributed
 proportion-redistributed
 0
 1
-0.738
+0.849
 0.01
 1
 NIL
@@ -1128,7 +1131,7 @@ c-proportion-redistributed
 c-proportion-redistributed
 0
 1
-0.776
+0.849
 0.01
 1
 NIL
@@ -1143,7 +1146,7 @@ o-proportion-redistributed
 o-proportion-redistributed
 0
 1
-0.51
+0.358
 0.01
 1
 NIL
@@ -1211,6 +1214,10 @@ An example of this format is provided with the model.
 (models in the NetLogo Models Library and elsewhere which are of related interest)
 
 ## Changelog
+
+* 0.44.1 - patched all-toilets container
+
+* 0.44 - now includes a "terminal clean". A toilet clean is performed when patients are discharged or when moving location (i.e., through a swap). Currently, the clean is the same as any other clean (i.e., same cleaning effect).
 
 * 0.43 - adds exponential functions to the bernoulli trials for random colonisation and toilet colonisation. This does not change functionality of the model, but aligns with mathematical notation.
 
