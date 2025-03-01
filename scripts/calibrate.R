@@ -11,15 +11,11 @@ bedspaces_per_ward <- 9
 set.seed(42)
 
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
-model_path <- here::here("models", "salgado_v0.43.nlogo")
+model_path <- here::here("models", "hospital_transmission.nlogo")
 out_path <- here::here("out")
 data_path <- here::here("data")
 
-# run_sims <- FALSE
-
-calibration_samples <- 100
-calibration_seeds <- 3
-abc_tol <- 0.05
+# run_sims <- TRUE
 
 antibiotic_prescription_rate = 0.499 # Vesporten 2018
 admission_days <- 4.6
@@ -27,18 +23,30 @@ bay_proportion <- 0.6
 
 ##============== pre-outbreak =============##
 
+calibration_samples <- 100
+calibration_seeds <- 3
+abc_tol <- 0.05
 source(here::here("scripts", "tune", "pre_outbreak.R"))
 
 ##============== outbreak and control ===============##
 
+calibration_samples <- 1000
+calibration_seeds <- 3
+abc_tol <- 0.025
 source(here::here("scripts", "tune", "outbreak_and_control.R"))
 
 ##=========== fine tune pre-outbreak ===================================##
 
+calibration_samples <- 1000
+calibration_seeds <- 3
+abc_tol <- 0.025
 source(here::here("scripts", "tune", "fine_tune_pre_outbreak.R"))
 
 ##=========== use variables for pre-outbreak params as well ============##
 
+calibration_samples <- 1000
+calibration_seeds <- 3
+abc_tol <- 0.025
 source(here::here("scripts", "tune", "variable_pre_outbreak.R"))
 
 ##================= simulate using consts only ==================##
@@ -48,6 +56,9 @@ source(here::here("scripts", "tune", "simulate_using_consts.R"))
 
 ###========== single outbreak only simulation =========###
 
+calibration_samples <- 100
+calibration_seeds <- 3
+abc_tol <- 0.05
 source(here::here("scripts", "tune", "single_outbreak.R"))
 
 # save.image(file.path(out_path, "calibrate.RData"))
@@ -67,6 +78,10 @@ source(here::here("scripts", "sensitivity", "toilet_cleaning_rate.R"))
 ####================ sensitivity toilet cleaning effect ==============####
 
 source(here::here("scripts", "sensitivity", "toilet_cleaning_effect.R"))
+
+##================= sensitivity analysis with perfect clean ==============##
+
+source(here::here("scripts", "sensitivity", "proportion_redistributed_perfect_clean.R"))
 
 list(abx_prescription_rate = sens_abx_prescription_outbreak_cases,
      proportion_redistributed = sens_prop_redist_outbreak_cases,
