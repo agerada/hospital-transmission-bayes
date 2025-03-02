@@ -48,8 +48,8 @@ nl@experiment <- experiment(expname = "consts_sim",
                             variables = estimated_consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 20,
-                              nseeds = 10,
+                              samples = calibration_samples,
+                              nseeds = calibration_seeds,
                               precision = 3)
 
 plan(list(sequential, multisession))

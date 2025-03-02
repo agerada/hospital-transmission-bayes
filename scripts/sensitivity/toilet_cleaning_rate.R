@@ -43,8 +43,8 @@ nl@experiment <- experiment(expname = "sens_analysis",
 )
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = 20,
-                              nseeds = 10,
+                              samples = sens_samples,
+                              nseeds = sens_seeds,
                               precision = 3)
 
 plan(list(sequential, multisession))

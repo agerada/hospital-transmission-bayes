@@ -44,13 +44,10 @@ nl@experiment <- experiment(expname = "single_outbreak_sim",
                                         "current-hospital-infections",
                                         "current-inpatients",
                                         "current-colonised"),
-                            constants = consts, 
-                            variables = estimated_consts)
+                            constants = estimated_consts_fixed)
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = 1,
-                              nseeds = 10,
-                              precision = 3)
+nl@simdesign <- simdesign_simple(nl,
+                              nseeds = calibration_seeds)
 
 plan(multisession)
 
