@@ -158,3 +158,16 @@ list(abx_prescription_rate = sens_abx_prescription_outbreak_cases,
   ggplot(aes(x = value, y = mean_cases)) + 
   geom_line() + 
   facet_wrap(~ param)
+
+sens_prop_redist_perfect_clean_outbreak_cases %>% pivot_longer(cols = `c-proportion-redistributed`,
+                                                               names_to = "param",
+                                                               values_drop_na = TRUE) %>% 
+  group_by(param, value) %>% 
+  summarise(mean_cases = mean(`outbreak-cases`),
+            sd_cases = sd(`outbreak-cases`),
+            .groups = "keep") %>% 
+  ggplot(aes(x = value, y = mean_cases)) + 
+  geom_line() + 
+  # shade sd
+  geom_ribbon(aes(ymin = mean_cases - sd_cases, ymax = mean_cases + sd_cases), alpha = 0.2) +
+  facet_wrap(~ param, scales = "free")
