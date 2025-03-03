@@ -120,3 +120,6 @@ source(here::here("scripts", "sensitivity", "toilet_cleaning_effect.R"))
 #   geom_line() + 
 #   facet_wrap(~ param, scales = "free")
 
+####================= sensitivity analysis abx prescription rates preoutbreak ==============####
+
+source(here::here("scripts", "sensitivity", "abx_prescription_rates_pre_outbreak.R"))
