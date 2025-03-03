@@ -355,9 +355,9 @@ abc_params_outbreak_control$unadj.values %>%
 
 Using the posterior distributions as inputs to the simulation model, as described in @sec-model-calibration, the model was able to generate scenarios of outbreaks that closely matched the observed data (see @fig-simulated-rates). In these simulated scenarios, the pre-outbreak baseline rate was a median of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
 
-```{r fig-simulated-rates, include=TRUE}
+```{r fig-abc-rates-retained-posterios, include=TRUE}
 #| echo: false
-#| label: fig-simulated-rates
+#| label: fig-abc-rates-retained-posteriors
 #| fig.cap: "Observed and simulated rates of _C. difficile_ infection over the simulated period. Approximate Bayesian computation was used to determine the unobserved parameters of the agent-based model. The red line shows the true observed infection rates. The black solid line shows the mean simulated rates; the dashed lines show the standard deviation."
 #| fig.width: 18
 #| fig.height: 8
@@ -369,7 +369,7 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
   xlab("Date") + ylab("Rate (cases per 1000 patient days)")
 ```
 
-```{r, include=FALSE}
+```{r fig-consts-sims-coloured, include=FALSE}
 #| echo: false
 #| fig.width: 18
 #| fig.height: 8
@@ -389,7 +389,26 @@ consts_sim_rates %>%
   guides(color="none")
 ```
 
-```{r, include=FALSE}
+```{r fig-consts-sims-mean-sd, include=TRUE}
+# plot but with mean and sd instead rather than individual
+consts_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(date_sim) %>%
+  summarise(m = mean(rate),
+            q_high = quantile(rate, 0.75),
+            q_low = quantile(rate, 0.25),
+            .groups = "keep") %>%
+  ggplot() +
+  geom_line(aes(x = date_sim, y = m)) +
+  geom_line(aes(x = date_sim, y = q_high), linetype='dashed') +
+  geom_line(aes(x = date_sim, y = q_low), linetype='dashed') + 
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "red") +
+  guides(color="none")
+```
+
+```{r fig-single-outbreak, include=FALSE}
 single_outbreak_sim_mod <- single_outbreak_sim %>% 
   mutate(prop_infected = `current-colonised` / `current-inpatients`,
          current_not_infected = `current-inpatients` - `current-colonised`)
@@ -407,9 +426,9 @@ single_outbreak_sim_mod %>%
 #   summarise(m = mean(prop_infected))
 ```
 
-The sensitivity analysis explored the impact of different infection control practices on the number of cases observed during the outbreak period -- the results are shown in @fig-sensitivity-analysis. The analysis showed that the cleaning of toilets had a dramatic impact on the number of cases observed during the outbreak period, although the benefit appeared to plateaeu beyond a certain amount -- for example, cleaning toilets more than twice per day appeared to have marginal benefits. The number of hospital acquired cases did not appear to be sensitive to the antimicrobial prescription rate.
+The sensitivity analysis explored the impact of different infection control practices on the number of cases observed during the outbreak period -- the results are shown in @fig-sensitivity-analysis. The analysis showed that the cleaning of toilets had a dramatic impact on the number of cases observed during the outbreak period, although the benefit appeared to plateaeu beyond a certain amount -- for example, cleaning toilets more than twice per day appeared to have marginal benefits. The number of hospital acquired cases did not appear to be sensitive to the antimicrobial prescription rate during the outbreak period. The cohorting of patients into single-occupancy rooms after colonisation/infection had an almost linear relationship with the number of cases. 
 
-```{r fig-sensitivity-analysis, include=TRUE}
+```{r fig-sensitivity-analysis, include=TRUE, eval=TRUE}
 #| echo: false
 list(abx_prescription_rate = sens_abx_prescription_outbreak_cases,
      proportion_redistributed = sens_prop_redist_outbreak_cases,
@@ -430,21 +449,23 @@ list(abx_prescription_rate = sens_abx_prescription_outbreak_cases,
   facet_wrap(~ param, scales = "free")
 ```
 
-```{r}
-sens_prop_redist_perfect_clean_outbreak_cases %>% pivot_longer(cols = `c-proportion-redistributed`,
-               names_to = "param",
-               values_drop_na = TRUE) %>% 
-  group_by(param, value) %>% 
+```{r fig-sensitvity-pre-outbreak-abx, include=TRUE, eval=TRUE}
+sens_abx_prescription_pre_outbreak_outbreak_cases %>% 
+  group_by(`antibiotic-prescription-rate`) %>% 
   summarise(mean_cases = mean(`outbreak-cases`),
-            sd_cases = sd(`outbreak-cases`),
-            .groups = "keep") %>% 
-  ggplot(aes(x = value, y = mean_cases)) + 
+            sd_cases = sd(`outbreak-cases`)) %>% 
+  ggplot(aes(x = `antibiotic-prescription-rate`, y = mean_cases)) +
   geom_line() + 
-  # shade sd
-  geom_ribbon(aes(ymin = mean_cases - sd_cases, ymax = mean_cases + sd_cases), alpha = 0.2) +
-  facet_wrap(~ param, scales = "free")
+  # add sd
+  geom_line(data = . %>% 
+              mutate(upper = mean_cases + sd_cases,
+                     lower = mean_cases - sd_cases),
+            aes(y = upper), linetype = "dashed") +
+  geom_line(data = . %>% 
+              mutate(upper = mean_cases + sd_cases,
+                     lower = mean_cases - sd_cases),
+            aes(y = lower), linetype = "dashed")
 ```
-
 
 ```{r run-deterministic-model, include=FALSE, cache=TRUE}
 # Parameters and time-dependent functions
@@ -588,12 +609,11 @@ output_df <- data.frame(
 )
 
 output_df <- filter(output_df, time > 31)
+output_long <- reshape2::melt(output_df, id = "time")
 ```
 
-```{r fig-single-outbreak, include=TRUE}
+```{r fig-single-outbreak-deterministic, include=TRUE}
 #| echo: false
-output_long <- reshape2::melt(output_df, id = "time")
-
 single_outbreak_one_seed %>% 
   pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
   filter(`[step]` > 31) %>%
@@ -611,6 +631,11 @@ single_outbreak_one_seed %>%
 ```
 
 # Discussion
+
+Infection prevention and control (IPC) is the practice of preventing the spread of infectious diseases in healthcare settings. A central responsibility is the operational management of an outbreak, defined as an increase in the number of infected cases above the expected rate. This research describes the design and calibration of an agent-based model that simulates the spread of infection in a hospital setting. The primary motivation of this work is to assess the impact of different infection prevention interventions (such as change in practice) on rates of infection. The model was designed to simulate a paradigm of infections that are faecal-oral-transmitted, with the risk increasing in the presence of the selective pressure introduced by antimicrobial therapy. Since some of the pathogens that fit this definition may be associated with long-term colonisation of the gastro-intestinal tract (without the presence of clinical illness), infection and colonisation are used inter-changeably within this research. The model can be used to simulate any infection with these characteristics, such as: _Clostridioides difficile_, vancomycin-resistant _Enterococcus_, extended-spectrum beta-lactamase-producing Enterobacterales, and carbapenem-resistant _Enterobacterales_.
+
+The model was designed to simulate the spread of infection/colonisation at a baseline (or background rate), followed by an outbreak period of increased transmission, in turn followed by a period of enhanced infection control to return back to the baseline rate. The model was calibrated to a report of a _C. difficile_ outbreak reported by @salgadoAnalysisOutbreakClostridium2009. Approximate Bayesian computation was used to calibrate the model to the reported rates of infection. When model inputs were drawn from the posterior distributions, the model was able to simulate plausible outbreak scenarios that were similar to the observed rates. A sensitivity analysis was performed over parameters that represent infection control interventions (such as the frequency of toilet cleaning), demonstrating the possible applications of this model for informing operational infection control practices. Interventions that controlled the spread of infection, such as the cohorting of patients to single-occupancy beds, and the increased frequency of toilet cleaning, led to a reduced number of cases during the outbreak period. 
+
 
 Repeated simulations using the model generated nosocomial CDI rates that showed a clear outbreak peak, followed by control of colonisation/infection through a change in infection control practice, resembling a real hospital CDI outbreak. The interactive nature of the model can be used for outbreak preparedness by testing out different infection control strategies. In summary, we report a pathogen-agnostic model that can be used to simulate any infection with features such as faecal-oral transmission, colonisation, and antimicrobial selective pressure effects.
 
