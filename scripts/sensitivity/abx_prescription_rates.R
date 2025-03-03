@@ -36,8 +36,8 @@ nl@experiment <- experiment(expname = "sens_analysis",
                                         "current-inpatients",
                                         "current-colonised"),
                             constants = c(consts, estimated_consts_mean), 
-                            variables = list("c-antibiotic-prescription-rate" = list(min=0.1,
-                                                                                     max=0.7,
+                            variables = list("c-antibiotic-prescription-rate" = list(min=0.01,
+                                                                                     max=0.99,
                                                                                      qfun='qunif')
                             )
 )
