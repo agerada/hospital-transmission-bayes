@@ -42,6 +42,9 @@ globals
   all-bedspaces
   bay-bedspaces
   side-room-bedspaces
+
+  bay-list-seq
+  bay-iterator
 ]
 
 breed [patients patient]
@@ -87,6 +90,10 @@ to setup
 
   set total-patients-admitted 0
   set total-colonised 0
+
+  set bay-list-seq bay-list
+  set bay-iterator 0
+
   setup-grid
 
   set all-toilets patches with [ toilet? = true ]
@@ -144,6 +151,13 @@ to setup-grid
   ]
 end
 
+to-report bay-list
+  let n-rooms wards-total * bedspaces-per-ward
+  let bay-seq n-values ( bay-proportion * n-rooms ) [ true ]
+  let non-bay-seq n-values ( n-rooms - length bay-seq ) [ false ]
+  report shuffle sentence bay-seq non-bay-seq
+end
+
 to create-ward [ t w beds ward-color ]
   ;; using a dummy turtle, start by creating a central bedspace for each ward
   ;; each bedspace is 1 patch surrounded by all neighbors
@@ -169,7 +183,7 @@ to create-ward [ t w beds ward-color ]
         set toilet? true
       ]
       set bed-counter bed-counter + 1
-      ifelse random-float 1.0 < bay-proportion
+      ifelse item bay-iterator bay-list-seq
       [
         set bay? true
         set bed-capacity 4
@@ -190,12 +204,13 @@ to create-ward [ t w beds ward-color ]
           set bed-availability 1
         ]
       ]
+      set bay-iterator bay-iterator + 1
       set temp-outline (list w bed-number bay?) ;; create temp info for bed
     ]
-  ;; update global outline of ward structures
-  set ward-outline lput temp-outline ward-outline
+    ;; update global outline of ward structures
+    set ward-outline lput temp-outline ward-outline
 
-  repeat beds - 1
+    repeat beds - 1
     [
       forward 4
       while  [ [ pcolor ] of patch-here = ward-color ]
@@ -223,7 +238,7 @@ to create-ward [ t w beds ward-color ]
           set toilet? true
         ]
         set bed-counter bed-counter + 1
-        ifelse (random-float 1 <= bay-proportion)
+        ifelse item bay-iterator bay-list-seq
         [
           set bay? true
           set bed-capacity 4
@@ -244,6 +259,7 @@ to create-ward [ t w beds ward-color ]
             set bed-availability 1
           ]
         ]
+        set bay-iterator bay-iterator + 1
         set temp-outline (list w bed-number bay?) ;; create temp info for bed
 
       ]
@@ -542,8 +558,8 @@ end
 GRAPHICS-WINDOW
 810
 10
-2138
-1339
+1564
+765
 -1
 -1
 8.2
@@ -556,10 +572,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--80
-80
--80
-80
+-45
+45
+-45
+45
 0
 0
 1
@@ -609,7 +625,7 @@ bedspaces-per-ward
 bedspaces-per-ward
 0
 20
-14.0
+9.0
 1
 1
 NIL
@@ -634,7 +650,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.822
+0.16
 0.05
 1
 NIL
@@ -664,7 +680,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.741
+0.744
 0.05
 1
 NIL
@@ -679,7 +695,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-3.794
+2.037
 0.1
 1
 NIL
@@ -694,7 +710,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-5.165
+0.943
 0.1
 1
 NIL
@@ -709,7 +725,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.03
+0.033
 0.01
 1
 NIL
@@ -762,7 +778,7 @@ CHOOSER
 wards-total
 wards-total
 4 9 16 32
-2
+1
 
 SLIDER
 21
@@ -773,7 +789,7 @@ antibiotic-prescription-rate
 antibiotic-prescription-rate
 0
 1
-0.376
+0.397
 0.001
 1
 NIL
@@ -788,7 +804,7 @@ antibiotic-effect
 antibiotic-effect
 0
 100
-1.557
+1.479
 0.1
 1
 RR/OR
@@ -836,7 +852,7 @@ SWITCH
 249
 outbreak?
 outbreak?
-1
+0
 1
 -1000
 
@@ -849,7 +865,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1028.516
+1038.654
 1
 1
 ticks
@@ -864,7 +880,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-5.165
+1.687
 0.1
 1
 NIL
@@ -879,7 +895,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.822
+0.601
 0.01
 1
 NIL
@@ -894,7 +910,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.37
+0.407
 0.01
 1
 NIL
@@ -909,7 +925,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-1.486
+1.663
 0.1
 1
 NIL
@@ -924,7 +940,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.03
+0.055
 0.01
 1
 NIL
@@ -939,7 +955,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.636
+0.652
 0.01
 1
 NIL
@@ -952,7 +968,7 @@ SWITCH
 256
 infection-control?
 infection-control?
-1
+0
 1
 -1000
 
@@ -980,7 +996,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.741
+0.773
 0.01
 1
 NIL
@@ -995,7 +1011,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-3.794
+2.74
 0.1
 1
 NIL
@@ -1010,7 +1026,7 @@ c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
-0.376
+0.397
 0.01
 1
 NIL
@@ -1025,7 +1041,7 @@ outbreak-end
 outbreak-end
 1
 10000
-1283.066
+1211.812
 1
 1
 NIL
@@ -1040,7 +1056,7 @@ control-end
 control-end
 1
 10000
-1340.953
+1337.853
 1
 1
 NIL
@@ -1072,7 +1088,7 @@ random-colonisation
 random-colonisation
 0
 1000
-6.796
+7.327
 0.1
 1
 cases per 10,000 bed days
@@ -1116,7 +1132,7 @@ proportion-redistributed
 proportion-redistributed
 0
 1
-0.849
+0.796
 0.01
 1
 NIL
@@ -1131,7 +1147,7 @@ c-proportion-redistributed
 c-proportion-redistributed
 0
 1
-0.849
+0.804
 0.01
 1
 NIL
@@ -1146,7 +1162,7 @@ o-proportion-redistributed
 o-proportion-redistributed
 0
 1
-0.358
+0.526
 0.01
 1
 NIL
@@ -1214,6 +1230,8 @@ An example of this format is provided with the model.
 (models in the NetLogo Models Library and elsewhere which are of related interest)
 
 ## Changelog
+
+* 0.45 - when creating a hospital, the proportion of bays is now fixed and not sampled (i.e., if bay-proportion = 0.6, then the number of bays is always 60%).
 
 * 0.44.1 - patched all-toilets container
 
