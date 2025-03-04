@@ -110,8 +110,16 @@ salgado %>%
 # simulated data
 pre_outbreak_sims_rates <- consts_sim_rates %>% 
   dplyr::filter(date_sim < outbreak_start_date) %>% 
-  summarise(across(rate, list(median = median, q_low = \(x) quantile(x, 0.25), q_high = \(x) quantile(x, 0.75))))
+  summarise(across(rate, list(median = median,
+                              q_low = \(x) quantile(x, 0.25),
+                              q_high = \(x) quantile(x, 0.75),
+                              mean = mean)))
 
 outbreak_sims_rates <- consts_sim_rates %>% 
   dplyr::filter(date_sim >= outbreak_start_date & date_sim <= outbreak_end_date) %>% 
-  summarise(across(rate, list(median = median, q_low = \(x) quantile(x, 0.25), q_high = \(x) quantile(x, 0.75), min = min, max = max)))
+  summarise(across(rate, list(median = median,
+                              q_low = \(x) quantile(x, 0.25),
+                              q_high = \(x) quantile(x, 0.75),
+                              min = min,
+                              max = max,
+                              mean = mean)))
