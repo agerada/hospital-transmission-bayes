@@ -60,6 +60,13 @@ source(here::here("scripts", "tune", "pre_outbreak.R"))
 calibration_samples <- availableCores() * 10
 calibration_seeds <- 3
 abc_tol <- 0.025
+
+upper_bound <- "mean" # mean, min, or max (of pre-outbreak priors)
+upper_bound_scale <- 1 # scale the upper bound by this factor
+
+lower_bound <- "mean" # mean, min, or max (of pre-outbreak priors)
+lower_bound_scale <- 1 # scale the lower bound by this factor
+
 message("Running pre-outbreak calibration with variables")
 message(glue::glue("Calibration samples: {calibration_samples},
                    Calibration seeds: {calibration_seeds},
