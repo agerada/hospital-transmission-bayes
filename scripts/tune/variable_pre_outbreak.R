@@ -147,10 +147,10 @@ results_outbreak_control_pre_included_rates <- results_outbreak_control_pre_incl
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
 results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included %>%
-  dplyr::select(!`random-seed`) %>% 
-  distinct(siminputrow, .keep_all = TRUE) %>% 
-  # mutate(siminputrow = siminputrow) %>% 
-  right_join(results_outbreak_control_pre_included_rates, by="siminputrow")
+  # dplyr::select(!`random-seed`) %>% 
+  distinct(`random-seed`, siminputrow, .keep_all = TRUE) %>% 
+  # mutate(siminputrow = siminputrow) %>%
+  right_join(results_outbreak_control_pre_included_rates, by=c("siminputrow", "random-seed"))
 
 params_names_outbreak_control <- names(nl@experiment@variables)
 
