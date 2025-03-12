@@ -80,7 +80,6 @@ consts_sim_rates <- consts_sim %>%
   ungroup() %>% 
   dplyr::select(!c(year, month))
 
-
 consts_sim_rates %>% 
   pivot_wider(names_from = date_sim, values_from = rate) %>% 
   #slice_sample(n=10) %>% 
