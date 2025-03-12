@@ -96,6 +96,13 @@ source(here::here("scripts", "tune", "single_outbreak.R"))
 
 # save.image(file.path(out_path, "calibrate.RData"))
 
+##================= posterior predictive checks ==================##
+
+calibration_samples <- availableCores() * 1
+calibration_seeds <- 3
+
+source(here::here("scripts", "tune", "posterior_predictive_checks.R"))
+
 ##================= sensitivity analysis ==================##
 
 sens_samples <- availableCores() * 1
