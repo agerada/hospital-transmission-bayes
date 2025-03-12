@@ -23,6 +23,10 @@ bay_proportion <- 0.6
 
 ##============== pre-outbreak =============##
 
+if (!dir.exists(out_path)) {
+  dir.create(out_path)
+}
+
 calibration_samples <- availableCores() * 8
 calibration_seeds <- 3
 abc_tol <- 0.05
