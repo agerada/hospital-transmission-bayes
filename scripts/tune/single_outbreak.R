@@ -14,7 +14,7 @@ consts <- list("wards-total" = wards_total,
                "bay-proportion" = bay_proportion)
 
 # set outbreak and control
-consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = FALSE)
+consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
 
 estimated_consts_mean <- abc_params_outbreak_control$unadj.values %>%
   apply(., 2, mean)
