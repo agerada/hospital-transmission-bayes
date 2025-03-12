@@ -6,6 +6,8 @@ library(abc)
 library(progressr)
 library(here)
 handlers("cli")
+options(progressr.enable=TRUE)
+
 wards_total <- 9
 bedspaces_per_ward <- 9
 set.seed(42)
