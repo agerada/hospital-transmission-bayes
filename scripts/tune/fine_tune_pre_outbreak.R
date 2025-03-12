@@ -66,7 +66,7 @@ results_baseline_fine_tune <- results_baseline_fine_tune %>%
                         length.out = n()))
 
 results_baseline_rates <- results_baseline_fine_tune %>% 
-  mutate(year = year(date_sim), month = month(date_sim)) %>% 
+  mutate(year = year(date_sim), month = str_pad(month(date_sim), 2, pad = "0")) %>% 
   group_by(`random-seed`, siminputrow, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
@@ -100,7 +100,8 @@ pre_outbreak_sims <- results_baseline_summary %>%
 
 sumstats <- pre_outbreak_sims %>% 
   ungroup %>% 
-  dplyr::select(starts_with("rate_"))
+  dplyr::select(starts_with("rate_")) %>% 
+  dplyr::select(sort(names(.)))
 
 abc_params <- abc(target = pre_outbreak_data$rates,
                   param = pre_outbreak_sims[params_names_pre_outbreak],

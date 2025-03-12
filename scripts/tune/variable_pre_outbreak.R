@@ -135,7 +135,7 @@ results_outbreak_control_pre_included <- results_outbreak_control_pre_included %
                         length.out = n()))
 
 results_outbreak_control_pre_included_rates <- results_outbreak_control_pre_included %>% 
-  mutate(year = year(date_sim), month = month(date_sim)) %>% 
+  mutate(year = year(date_sim), month = str_pad(month(date_sim), 2, pad = "0")) %>% 
   group_by(siminputrow, `random-seed`, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
@@ -169,8 +169,9 @@ outbreak_control_sims <- results_outbreak_control_pre_included_summary %>%
 
 sumstats <- outbreak_control_sims %>% 
   ungroup %>% 
-  dplyr::select(starts_with("rate_"))
-
+  dplyr::select(starts_with("rate_")) %>% 
+  dplyr::select(sort(names(.)))
+  
 abc_params_outbreak_control <-abc(target = salgado$rates,
                                   param = outbreak_control_sims[params_names_outbreak_control],
                                   sumstat = sumstats,
