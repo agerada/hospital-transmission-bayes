@@ -14,7 +14,7 @@ consts <- list("wards-total" = wards_total,
                "bay-proportion" = bay_proportion)
 
 # set outbreak and control
-consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = FALSE)
+consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
 
 # estimated_consts_mean <- abc_params_outbreak_control$unadj.values %>%
 #   apply(., 2, mean)
@@ -30,9 +30,11 @@ consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = FALSE)
 
 # estimated_consts_fixed <- c(estimated_consts_mean, consts)
 
-posterior_samples <- abc_params_outbreak_control$unadj.values %>% 
+posterior_samples_df <- abc_params_outbreak_control$unadj.values %>% 
   as.data.frame() %>% 
-  sample_n(calibration_samples, replace = TRUE) %>% 
+  sample_n(calibration_samples, replace = TRUE)
+
+posterior_samples <- posterior_samples_df %>%
   as.list() %>% 
   map(\(x) list(values = x))
 
@@ -126,3 +128,9 @@ outbreak_sims_rates <- posterior_predictive_sim_rates %>%
                               min = min,
                               max = max,
                               mean = mean)))
+
+# below saves one of the parameter sets
+# posterior_samples_df %>% 
+#   filter(row_number() == 3) %>% 
+#   t() %>% 
+#   write.table("out/singleparam.csv", col.names = FALSE, sep = ",")
