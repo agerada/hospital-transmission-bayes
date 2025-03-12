@@ -392,7 +392,7 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
   xlab("Date") + ylab("Rate (cases per 1000 patient days)")
 ```
 
-```{r fig-consts-sims-coloured, include=FALSE}
+```{r fig-consts-sims-coloured, include=TRUE}
 #| echo: false
 #| fig.width: 18
 #| fig.height: 8
@@ -431,6 +431,27 @@ consts_sim_rates %>%
   guides(color="none")
 ```
 
+```{r fig-single-outbreak-coloured, include=TRUE}
+#| echo: false
+#| fig.width: 18
+#| fig.height: 8
+#| message: false
+single_outbreak_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  dplyr::select(!`siminputrow`) %>% 
+  pivot_longer(cols = !c(`random-seed`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(date_sim, `random-seed`) %>%
+  summarise(rate = mean(rate)) %>%
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`random-seed`))) +
+  geom_line() +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
+  guides(color="none")
+```
+
 ```{r fig-single-outbreak, include=FALSE}
 single_outbreak_sim_mod <- single_outbreak_sim %>% 
   mutate(prop_infected = `current-colonised` / `current-inpatients`,
@@ -447,6 +468,43 @@ single_outbreak_sim_mod %>%
 # single_outbreak_sum_stat <- single_outbreak_sim_mod %>% 
 #   group_by(`[step]`) %>%
 #   summarise(m = mean(prop_infected))
+```
+
+```{r fig-posterior-predictive-check, include=TRUE}
+#| echo: false
+posterior_predictive_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(date_sim) %>%
+  summarise(m = median(rate),
+            q_high = quantile(rate, 0.75),
+            q_low = quantile(rate, 0.25),
+            .groups = "keep") %>%
+  ggplot() +
+  geom_line(aes(x = date_sim, y = m)) +
+  geom_line(aes(x = date_sim, y = q_high), linetype='dashed') +
+  geom_line(aes(x = date_sim, y = q_low), linetype='dashed') + 
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "red") +
+  guides(color="none")
+```
+
+```{r fig-posterior-predictive-check-coloured, include=TRUE}
+#| echo: false
+#| message: false
+posterior_predictive_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(siminputrow, date_sim) %>%
+  summarise(rate = mean(rate)) %>%
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`siminputrow`))) +
+  geom_line() +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
+  guides(color="none")
 ```
 
 The sensitivity analysis explored the impact of different infection control practices on the number of cases observed during the outbreak period -- the results are shown in @fig-sensitivity-analysis. The analysis showed that the cleaning of toilets had a dramatic impact on the number of cases observed during the outbreak period, although the benefit appeared to plateaeu beyond a certain amount -- for example, cleaning toilets more than twice per day appeared to have marginal benefits. The number of hospital acquired cases did not appear to be sensitive to the antimicrobial prescription rate during the outbreak period. The cohorting of patients into single-occupancy rooms after colonisation/infection had an almost linear relationship with the number of cases. 
