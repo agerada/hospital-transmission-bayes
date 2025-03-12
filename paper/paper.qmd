@@ -38,7 +38,24 @@ source(file.path("..", "scripts", "calibrate.R"), chdir = TRUE)
 # load(file.path("..", "out", "calibrate.RData"))
 ```
 
-Transmission of potentially pathogenic bacteria under antimicrobial selective pressure has important implications for control of hospital-acquired infection. Examples include *Clostridioides difficile* infection (CDI) and Vancomycin-resistant *Enterococcus*. In addition to patient factors, colonisation risk depends on environmental factors (e.g., surface cleaning), proximity to other colonised patients, and use of antimicrobial agents. To guide infection control strategies, especially during outbreaks, we developed an agent-based simulator and estimated its parameters using data from a CDI outbreak documented by @salgadoAnalysisOutbreakClostridium2009.
+Transmission of potentially pathogenic bacteria under antimicrobial selective pressure has important implications for control of hospital-acquired infection.
+Examples of such pathogens include *Clostridioides difficile* infection (CDI), vancomycin-resistant *Enterococcus* (VRE), extended-spectrum beta-lactamase-producing (ESBL) Enterobacterales, and carbapenem-resistant Enterobacterales (CPE).
+Infection with these pathogens can lead to increased morbidity and mortality -- for example, CPE bloodstream infection is associated with an increased risk of in-hospital mortality (risk difference of 0.25) compared to carbapenem-susceptible infection [@budhramHealthOutcomesAttributable2020].
+_C. difficile_ infection is associated with prolonged hospital stay and increased healthcare costs, causing a significant operational burden [@forsterEffectHospitalacquiredInfection2012].
+Furthermore, the therapeutic antimicrobial options available for VRE, ESBL, and CPE are limited, leading to increased use of WHO reserve agents, which further exacerbates the problem of antimicrobial resistance [@organization2019WHOAWaRe2019].
+
+Infection prevention and control (IPC) strategies are essential to prevent the spread of these pathogens within a healthcare setting, and include measures such as hand hygiene, environmental cleaning, isolation of infected/colonised patients, and more [@worldhealthorganizationGlobalReportInfection2022].
+In many healthcare settings, IPC strategies and operational practices are led by a multi-disciplinary IPC team.
+A key role of IPC teams is to prepare for, declare, investigate, and control outbreaks of healthcare-associated infections.
+In practice, an outbreak is declared after rates of infection have been compared to historical rates, and this is followed by a series of interventions to control the outbreak.
+These interventions may include increased frequency and thoroughness of environmental cleaning, cohorting of infected/colonised patients (particularly into single-occupancy _en suite_ rooms), and increased hand hygiene compliance.
+The impact of these interventions is often difficult to quantify.
+Although evidence suggests that the interventions can help control outbreaks, studies almost always report their findings after a suite of interventions have been implemented -- the relative importance of each intervention is rarely quantified.
+
+
+In addition to patient factors, the risk of infection and/or colonisation depends on environmental factors (e.g., surface cleaning), proximity to other colonised patients, and use of antimicrobial agents.
+
+To guide infection control strategies, especially during outbreaks, we developed an agent-based simulator and estimated its parameters using data from a CDI outbreak documented by @salgadoAnalysisOutbreakClostridium2009.
 
 # Methods
 
