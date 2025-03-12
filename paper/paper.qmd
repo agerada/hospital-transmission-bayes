@@ -50,8 +50,14 @@ A key role of IPC teams is to prepare for, declare, investigate, and control out
 In practice, an outbreak is declared after rates of infection have been compared to historical rates, and this is followed by a series of interventions to control the outbreak.
 These interventions may include increased frequency and thoroughness of environmental cleaning, cohorting of infected/colonised patients (particularly into single-occupancy _en suite_ rooms), and increased hand hygiene compliance.
 The impact of these interventions is often difficult to quantify.
-Although evidence suggests that the interventions can help control outbreaks, studies almost always report their findings after a suite of interventions have been implemented -- the relative importance of each intervention is rarely quantified.
+Although evidence suggests that the interventions can help control outbreaks, studies almost always report their findings after a suite of interventions have been implemented -- therefore, the relative importance of each intervention is not usually quantifiable.
+Furthermore, studies report findings from a population that may be very different from the outbreak population being managed -- differences can range from patient factors such as co-morbidities and rates of antimicrobial resistance, to institution practices such rates of antimicrobial usage, and to structural differences such as hospital layout.
 
+In practice, the approach to managing outbreaks is often reactive.
+Once an outbreak is identified and declared, the IPC team implements a set of enhanced infection control measures to attempt to attempt to halt transmission.
+The number of cases of infection or colonisation is monitored over a time frame dependent on the pathogen, setting, and scale of the outbreak.
+If the measures are successful in controlling the spread, then they are gradually relaxed once rates return to baseline.
+If they are not, then further measures are implemented, or the existing measures are intensified, until control is achieved.
 
 In addition to patient factors, the risk of infection and/or colonisation depends on environmental factors (e.g., surface cleaning), proximity to other colonised patients, and use of antimicrobial agents.
 
