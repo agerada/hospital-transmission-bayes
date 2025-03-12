@@ -110,9 +110,16 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             constants = consts)
 
 nl@simdesign <- simdesign_lhs(nl,
-                              samples = calibration_samples,
+                              samples = calibration_samples * 4,
                               nseeds = calibration_seeds,
                               precision = 3)
+
+# keep simulated parameters that fit with outbreak generation
+nl@simdesign@siminput <- nl@simdesign@siminput %>%
+  dplyr::filter(`o-toilet-contamination-effect` >= `toilet-contamination-effect` &
+                  `o-toilet-frequenting-rate` >= `toilet-frequenting-rate` &
+                  `o-community-colonisation-rate` >= `community-colonisation-rate`) %>% 
+  sample_n(calibration_samples)
 
 plan(list(sequential, multisession))
 
@@ -139,17 +146,13 @@ results_outbreak_control_pre_included_rates <- results_outbreak_control_pre_incl
   group_by(siminputrow, `random-seed`, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000)
 
-results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included %>% distinct(`random-seed`, siminputrow, .keep_all = TRUE) %>% 
+results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included %>%
+  dplyr::select(!`random-seed`) %>% 
+  distinct(siminputrow, .keep_all = TRUE) %>% 
   # mutate(siminputrow = siminputrow) %>% 
-  right_join(results_outbreak_control_pre_included_rates, by=c("siminputrow", "random-seed"))
+  right_join(results_outbreak_control_pre_included_rates, by="siminputrow")
 
 params_names_outbreak_control <- names(nl@experiment@variables)
-
-# keep simulated parameters that fit with outbreak generation
-results_outbreak_control_pre_included_summary <- results_outbreak_control_pre_included_summary %>% 
-  dplyr::filter(`o-toilet-contamination-effect` >= `toilet-contamination-effect` &
-                  `o-toilet-frequenting-rate` >= `toilet-frequenting-rate` &
-                  `o-community-colonisation-rate` >= `community-colonisation-rate`)
 
 outbreak_control_sims <- results_outbreak_control_pre_included_summary %>% 
   dplyr::select(all_of(params_names_outbreak_control), `random-seed`, siminputrow, month, year, rate) %>% 
