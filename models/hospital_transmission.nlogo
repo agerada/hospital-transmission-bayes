@@ -74,6 +74,14 @@ patches-own
 to setup
   clear-all
   reset-ticks
+  if force-seed? [
+    carefully [
+      show word "Forcing the following seed: " seed-value
+      random-seed seed-value
+    ] [
+      show "Invalid seed, must be int between -2147483647 and 2147483647."
+    ]
+  ]
   set wards-per-row sqrt wards-total
   resize-world 0 - (wards-total * 5) (wards-total * 5) 0 - (wards-total * 5) (wards-total * 5)
 
@@ -617,10 +625,10 @@ NIL
 1
 
 SLIDER
-21
-140
-194
-173
+22
+181
+195
+214
 bedspaces-per-ward
 bedspaces-per-ward
 0
@@ -642,10 +650,10 @@ Setup options
 1
 
 SLIDER
-21
-277
-216
-310
+22
+318
+217
+351
 toilet-contamination-effect
 toilet-contamination-effect
 0
@@ -657,10 +665,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-20
-177
-192
-210
+21
+218
+193
+251
 bay-proportion
 bay-proportion
 0
@@ -672,10 +680,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-20
-313
-218
-346
+21
+354
+219
+387
 toilet-cleaning-effect
 toilet-cleaning-effect
 0
@@ -687,10 +695,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-22
-351
-217
-384
+23
+392
+218
+425
 toilet-cleaning-rate
 toilet-cleaning-rate
 0
@@ -702,10 +710,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-21
-239
-216
-272
+22
+280
+217
+313
 toilet-frequenting-rate
 toilet-frequenting-rate
 0
@@ -717,10 +725,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-21
-412
-226
-445
+22
+453
+227
+486
 community-colonisation-rate
 community-colonisation-rate
 0
@@ -732,20 +740,20 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-22
-225
-172
-243
+23
+266
+173
+284
 Toilet options
 11
 0.0
 1
 
 TEXTBOX
-24
-396
-174
-414
+25
+437
+175
+455
 Admission options
 11
 0.0
@@ -771,20 +779,20 @@ PENS
 "not colonised" 1.0 0 -13840069 true "" "plot count turtles with [ colonised? = False ]"
 
 CHOOSER
-21
-92
-159
-137
+22
+133
+114
+178
 wards-total
 wards-total
 4 9 16 32
 1
 
 SLIDER
-21
-485
-225
-518
+22
+526
+226
+559
 antibiotic-prescription-rate
 antibiotic-prescription-rate
 0
@@ -796,10 +804,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-22
-587
-231
-620
+23
+628
+232
+661
 antibiotic-effect
 antibiotic-effect
 0
@@ -811,10 +819,10 @@ RR/OR
 HORIZONTAL
 
 SLIDER
-22
-447
-194
-480
+23
+488
+195
+521
 admission-days
 admission-days
 0
@@ -826,10 +834,10 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-23
-570
-173
-588
+24
+611
+174
+629
 Colonisation parameters
 11
 0.0
@@ -1063,10 +1071,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-21
-665
-159
-698
+22
+706
+160
+739
 Load Parameters
 read-abc-params
 NIL
@@ -1080,10 +1088,10 @@ NIL
 1
 
 SLIDER
-21
-625
-337
-658
+22
+666
+338
+699
 random-colonisation
 random-colonisation
 0
@@ -1124,10 +1132,10 @@ PENS
 "hospital" 1.0 0 -14070903 true "" "plot current-hospital-infections"
 
 SLIDER
-20
-521
-229
-554
+21
+562
+230
+595
 proportion-redistributed
 proportion-redistributed
 0
@@ -1168,11 +1176,38 @@ o-proportion-redistributed
 NIL
 HORIZONTAL
 
+SWITCH
+20
+94
+132
+127
+force-seed?
+force-seed?
+1
+1
+-1000
+
+SLIDER
+159
+84
+192
+176
+seed-value
+seed-value
+-2147483648
+2147483647
+0.0
+1
+1
+NIL
+VERTICAL
+
 @#$#@#$#@
 ## Introduction
+
 This is an agent-based model of a hospital environment for the purpose of simulating transmission of faecal-oral transmitted healtchare infection/colonisation. The model is intended to simulate colonisation/infection that transmits mainly through toilet use and is increased with antimicrobial exposure, e.g., _Clostridioides difficile_ infection. It also attempts to optionally simulate an outbreak and control through enhanced infection prevention mechanisms.
 
-## How it works
+## Model description
 
 Firstly, a hospital structure is set up, with multiple wards. Each ward can have a mixture of bays and side rooms. The main difference is that bays can have multiple patients sharing a toilet. At each tick (corresponding to a day in real time), patients are admitted and discharged to maintain full capacity of the hospitals. Toilets are used and contaminated. Patients can get colonised/infected through: 
 
@@ -1183,7 +1218,7 @@ Every tick, toilets are cleaned and patients redistributed such that infected/co
 
 An outbreak may be triggerred at a particular time point in the simulation. If this happens, some parameters change to encourage increased transmission. Then, an optional limited period of enhanced infection control practice may be triggerred to deal with the increased transmission.
 
-## How to use it
+## Interacting with the model
 
 Firstly, use the "Setup options" to define the hospital structure: 
 
@@ -1201,7 +1236,7 @@ Assuming that the parameters are left at these defaults, now just press "Go" to 
 
 * _random-colonisation_: Daneman, 2015 [2] -- Rate of 6.2 cases per 10,000 patient bed days for _C. difficile_.
 
-## Things to try
+## Things to explore
 
 Try changing the different parameters to look at the impact on transmission. Start by turning off both the "outbreak?" and "infection-control?" switches so that no outbreak takes place. Run the simulation using the default settings. While the simulation is running, try changing different paramaters to pusuh the rate of infection up. Which parameters seem to have the most impact? 
 
@@ -1221,15 +1256,9 @@ The model can load parameters from a .csv file, using "Load Parameters". The fol
 
 An example of this format is provided with the model.
 
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
-
 ## Changelog
+
+* 0.46 - now supports setting the seed through an input parameter. If "force-seed?" is true, then "seed-value" is used as the seed. If "force-seed?" is false, then the model does not modify the seed. In this case, the default behaviour would be for a random seed to be set by NetLogo, or if running through the nlrx R package, then the simdesign seed would be used.
 
 * 0.45 - when creating a hospital, the proportion of bays is now fixed and not sampled (i.e., if bay-proportion = 0.6, then the number of bays is always 60%).
 
@@ -1241,7 +1270,7 @@ An example of this format is provided with the model.
 
 * 0.42 - uses time extension to schedule toilet clean and use during the day using discrete event simulation.
 
-## CREDITS AND REFERENCES
+## References
 
 1. Salgado CD, Mauldin PD, Fogle PJ, Bosso JA. Analysis of an outbreak of Clostridium difficile infection controlled with enhanced infection control measures. American Journal of Infection Control. 2009 Aug;37(6):458–64. 
 
