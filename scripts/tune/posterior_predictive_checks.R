@@ -116,14 +116,14 @@ salgado %>%
   summarise(across(rates, list(median = median, q_low = \(x) quantile(x, 0.25), q_high = \(x) quantile(x, 0.75), min = min, max = max)))
 
 # simulated data
-pre_outbreak_sims_rates <- posterior_predictive_sim_rates %>% 
+pre_outbreak_posterior_predictive_sims_rates <- posterior_predictive_sim_rates %>% 
   dplyr::filter(date_sim < outbreak_start_date) %>% 
   summarise(across(rate, list(median = median,
                               q_low = \(x) quantile(x, 0.25),
                               q_high = \(x) quantile(x, 0.75),
                               mean = mean)))
 
-outbreak_sims_rates <- posterior_predictive_sim_rates %>% 
+outbreak_posterior_predictive_sims_rates <- posterior_predictive_sim_rates %>% 
   dplyr::filter(date_sim >= outbreak_start_date & date_sim <= outbreak_end_date) %>% 
   summarise(across(rate, list(median = median,
                               q_low = \(x) quantile(x, 0.25),
