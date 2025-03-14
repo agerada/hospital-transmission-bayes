@@ -99,8 +99,6 @@ source(here::here("scripts", "tune", "single_outbreak.R"))
 ##================= posterior predictive checks ==================##
 
 calibration_samples <- availableCores() * 1
-calibration_seeds <- 3
-
 source(here::here("scripts", "tune", "posterior_predictive_checks.R"))
 
 ##================= sensitivity analysis ==================##

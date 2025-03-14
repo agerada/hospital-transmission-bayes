@@ -14,7 +14,8 @@ consts <- list("wards-total" = wards_total,
                "bay-proportion" = bay_proportion)
 
 # set outbreak and control
-consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
+consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE,
+            "force-seed?" = TRUE)
 
 # estimated_consts_mean <- abc_params_outbreak_control$unadj.values %>%
 #   apply(., 2, mean)
@@ -38,6 +39,8 @@ posterior_samples <- posterior_samples_df %>%
   as.list() %>% 
   map(\(x) list(values = x))
 
+posterior_samples[["seed-value"]] <- list(values = nlrx:::util_generate_seeds(nrow(posterior_samples_df)))
+
 nl@experiment <- experiment(expname = "posterior_predictive_sim",
                             outpath = out_path,
                             repetition = 1,
@@ -56,7 +59,7 @@ nl@experiment <- experiment(expname = "posterior_predictive_sim",
                             variables = posterior_samples)
 
 nl@simdesign <- simdesign_distinct(nl,
-                              nseeds = calibration_seeds)
+                              nseeds = 1)
 
 plan(list(sequential, multisession))
 
