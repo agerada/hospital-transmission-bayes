@@ -24,11 +24,7 @@ library(tidyverse)
 library(abc)
 library(lhs)
 library(flextable)
-```
-
-```{r}
-# print(here::here())
-# file.exists(here::here("scripts", "calibrate.R"))
+library(progressr)
 ```
 
 ```{r load-data, include=FALSE}
@@ -60,9 +56,9 @@ If the measures are successful in controlling the spread, then they are graduall
 If they are not, then further measures are implemented, or the existing measures are intensified, until control is achieved.
 A inherent limitation of this approach is that decisions are made based on observed data, and the impact of interventions cannot be quantified until after a change in the rate of infection has been observed, by which time further preventable nosocomial infections may have occurred.
 
-Computer simulation approaches such as agent-based modelling (ABM) can be used to simulate the spread of infectious diseases by constructing a virtual environment (such as a hospital), within which agents (such as patients and/or staff) interact. Agent-based modelling has been used to model various infectious diseases, such as the transmission of important nosocomial pathogens such as methicillin-resistant _Staphylococcus aureus_ (MRSA) within a healthcare setting [@jaramilloAgentBasedModel2015], and the spread of SARS-CoV-2 within a community [@kerrCovasimAgentbasedModel2021].
+Computer simulation approaches such as agent-based modelling (ABM) can be used to simulate the spread of infectious diseases by constructing a virtual environment (such as a hospital), within which agents (such as patients and/or staff) interact. Agent-based modelling has been used to model various infectious diseases, such as the transmission of important nosocomial pathogens such as methicillin-resistant _Staphylococcus aureus_ (MRSA) within a healthcare setting [@jaramilloAgentBasedModel2015], and the spread of SARS-CoV-2 within a community population [@kerrCovasimAgentbasedModel2021]. An important advantage of ABM is that models can be used to project the impact of interventions on transmission, prior to their implementation [@cassidyMathematicalModellingHealth2019]. This can be particularly useful in the preparedness for, and management of, outbreaks of healthcare-associated infections, where the impact of interventions is difficult to quantify [@cassidyMathematicalModellingHealth2019]. "What if?" testing allows for different scenarios or bundles of interventions can be simulated to determine their impact. 
 
-To guide infection control strategies, especially during outbreaks, we developed an agent-based simulator and estimated its parameters using data from a CDI outbreak documented by @salgadoAnalysisOutbreakClostridium2009.
+In this study, we describe an agent-based model that simulates the transmission of faecal-oral-transmitted pathogens under antimicrobial selection pressure. The aim of the model is to guide infection control strategies and interventions, particularly during outbreak periods. The parameters are estimated using data from a CDI outbreak reported by @salgadoAnalysisOutbreakClostridium2009, although the model is designed to be adaptable to other related antimicrobial-resistant pathogens such as VRE, ESBL, and CPE.
 
 # Methods
 
@@ -439,7 +435,7 @@ uniform_sims_rates %>%
 #| fig.width: 18
 #| fig.height: 8
 #| message: false
-single_outbreak_sim_rates %>% 
+mean_sims_rates %>% 
   pivot_wider(names_from = date_sim, values_from = rate) %>% 
   #slice_sample(n=10) %>% 
   dplyr::select(!`siminputrow`) %>% 
@@ -456,10 +452,10 @@ single_outbreak_sim_rates %>%
 ```
 
 ```{r fig-single-outbreak, include=FALSE}
-single_outbreak_sim_mod <- single_outbreak_sim %>% 
+mean_sims_mod <- mean_sims %>% 
   mutate(prop_infected = `current-colonised` / `current-inpatients`,
          current_not_infected = `current-inpatients` - `current-colonised`)
-single_outbreak_sim_mod %>% 
+mean_sims_mod %>% 
   pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
   ggplot(aes(x = `[step]`, y = value, color = compartment)) +
   geom_line() +
@@ -468,7 +464,7 @@ single_outbreak_sim_mod %>%
        y = "Number of Patients",
        color = "Compartment") 
 
-# single_outbreak_sum_stat <- single_outbreak_sim_mod %>% 
+# single_outbreak_sum_stat <- mean_sims_mod %>% 
 #   group_by(`[step]`) %>%
 #   summarise(m = mean(prop_infected))
 ```
@@ -556,13 +552,13 @@ sens_abx_prescription_pre_outbreak_outbreak_cases %>%
 ```{r run-deterministic-model, include=FALSE, cache=TRUE}
 # Parameters and time-dependent functions
 parameters <- list(
-  # p = 1 - unique(single_outbreak_sim$`community-colonisation-rate`),      # Proportion of non-infected admissions
+  # p = 1 - unique(mean_sims$`community-colonisation-rate`),      # Proportion of non-infected admissions
   A = 50        # Total admission/discharge rate
 )
 # 
 
-single_seeds <- unique(single_outbreak_sim$`random-seed`)
-single_outbreak_one_seed <- single_outbreak_sim_mod %>% 
+single_seeds <- unique(mean_sims$`random-seed`)
+single_outbreak_one_seed <- mean_sims_mod %>% 
   filter(`random-seed` == single_seeds[3])
 
 target_baseline_rate <- single_outbreak_one_seed %>%
@@ -597,14 +593,14 @@ rate_grid <- rate_grid %>%
 
 # Time-varying beta function (example: sinusoidal variation over time)
 beta_function <- function(t, baseline_rate, outbreak_rate) {
-  if (t > unique(single_outbreak_sim$`outbreak-start`) &
-      t < unique(single_outbreak_sim$`outbreak-end`)) {
+  if (t > unique(mean_sims$`outbreak-start`) &
+      t < unique(mean_sims$`outbreak-end`)) {
     return (outbreak_rate)
   }
   return (baseline_rate)
 }
 
-run_to <- max(single_outbreak_sim$`[step]`)
+run_to <- max(mean_sims$`[step]`)
 
 # Initial conditions
 total_patients <- unique(single_outbreak_one_seed$`current-inpatients`)
@@ -615,37 +611,40 @@ time <- seq(0, run_to, by = 1)         # Time steps
 dt <- 1                             # Time step size
 
 plan(multisession)
-ode_sims <- furrr::future_pmap_dfr(rate_grid,
-        \(b_base, b_out, c_base, c_out, r) {
-          N <- numeric(length(time))
-          I <- numeric(length(time))
-          N[1] <- initial_state["N"]
-          I[1] <- initial_state["I"]
+ode_sims <- 
+  
+    furrr::future_pmap_dfr(rate_grid,
+          \(b_base, b_out, c_base, c_out, r) {
+            N <- numeric(length(time))
+            I <- numeric(length(time))
+            N[1] <- initial_state["N"]
+            I[1] <- initial_state["I"]
+  
+            # Euler method for numerical integration with time-varying parameters
+            for (t in 1:(length(time) - 1)) {
+              # Current beta value
+              beta_t <- beta_function(time[t], b_base, b_out)
+              p_t <- beta_function(time[t], c_base, c_out)
+              
+              # Total population at current time
+              total <- N[t] + I[t]
+              
+              # Proportions of non-infected and infected
+              prop_N <- ifelse(total > 0, N[t] / total, 0)
+              prop_I <- ifelse(total > 0, I[t] / total, 0)
+              
+              # Calculate derivatives
+              dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t]  - r * N[t]
+              dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t]  + r * N[t]
+              
+              # Update populations using Euler's method
+              N[t + 1] <- N[t] + dN * dt
+              I[t + 1] <- I[t] + dI * dt
+            }
+            data.frame(baseline = mean(I[31:200] / ( N[31:200] + I[31:200] )),
+                       outbreak = mean(I[1100:1200] / ( N[1100:1200] + I[1100:1200] )))
+          }, .progress = T)
 
-          # Euler method for numerical integration with time-varying parameters
-          for (t in 1:(length(time) - 1)) {
-            # Current beta value
-            beta_t <- beta_function(time[t], b_base, b_out)
-            p_t <- beta_function(time[t], c_base, c_out)
-            
-            # Total population at current time
-            total <- N[t] + I[t]
-            
-            # Proportions of non-infected and infected
-            prop_N <- ifelse(total > 0, N[t] / total, 0)
-            prop_I <- ifelse(total > 0, I[t] / total, 0)
-            
-            # Calculate derivatives
-            dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t]  - r * N[t]
-            dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t]  + r * N[t]
-            
-            # Update populations using Euler's method
-            N[t + 1] <- N[t] + dN * dt
-            I[t + 1] <- I[t] + dI * dt
-          }
-          data.frame(baseline = mean(I[31:200] / ( N[31:200] + I[31:200] )),
-                     outbreak = mean(I[1100:1200] / ( N[1100:1200] + I[1100:1200] )))
-        })
 
 abc_single_outbreak <- abc(c(target_baseline_rate, target_outbreak_rate), rate_grid, ode_sims[c("baseline", "outbreak")], tol=0.025, method='rejection')
 
@@ -653,8 +652,8 @@ abc_single_outbreak <- abc(c(target_baseline_rate, target_outbreak_rate), rate_g
 baselinerate <- mean(abc_single_outbreak$unadj.values[, "b_base"])
 outbreakrate <- mean(abc_single_outbreak$unadj.values[, "b_out"])
 
-# baselinecolonisation <- 1 - unique(single_outbreak_sim$`community-colonisation-rate`)
-# outbreakcolonisation <- 1 - unique(single_outbreak_sim$`o-community-colonisation-rate`)
+# baselinecolonisation <- 1 - unique(mean_sims$`community-colonisation-rate`)
+# outbreakcolonisation <- 1 - unique(mean_sims$`o-community-colonisation-rate`)
 baselinecolonisation <- mean(abc_single_outbreak$unadj.values[, "c_base"])
 outbreakcolonisation <- mean(abc_single_outbreak$unadj.values[, "c_out"])
 r <- mean(abc_single_outbreak$unadj.values[, "r"])
@@ -698,8 +697,10 @@ output_df <- filter(output_df, time > 31)
 output_long <- reshape2::melt(output_df, id = "time")
 ```
 
-```{r fig-single-outbreak-deterministic, include=TRUE}
+```{r fig-single-outbreak-deterministic-one-plot, include=FALSE}
 #| echo: false
+#| message: false
+#| fig.cap: "Comparison of infection rates produced by the agent-based model and the deterministic model. The r"
 single_outbreak_one_seed %>% 
   pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
   filter(`[step]` > 31) %>%
@@ -711,9 +712,42 @@ single_outbreak_one_seed %>%
        x = "Time",
        y = "Number of Patients",
        color = "Compartment") +
-  geom_line(data = output_df, aes(x = time, y = N), color = "blue") + 
-  geom_line(data = output_df, aes(x = time, y = I), color = "red") +
+  geom_line(data = output_df, aes(x = time, y = N), color = "blue", linetype = "dashed") + 
+  geom_line(data = output_df, aes(x = time, y = I), color = "red", linetype = "dashed") +
   xlim(500, 2000)
+```
+
+```{r fig-single-outbreak-deterministic-faceted, include=TRUE}
+#| echo: false
+#| message: false
+#| fig.cap: "Comparison of infection rates produced by the agent-based model and the deterministic model. The parameters for the deterministic model were determined using approximate Bayesian computation, using the output from a single run of the agent-based model as a reference."
+output_df_long <- output_df %>% 
+  pivot_longer(cols = c(N, I), names_to = "compartment", values_to = "value") %>% 
+  mutate(sim_type = "deterministic") %>% 
+  mutate(compartment = case_when(
+    compartment == "N" ~ "not_infected",
+    compartment == "I" ~ "infected"
+  ))
+
+single_outbreak_one_seed %>% 
+  pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
+  filter(`[step]` > 31) %>%
+  group_by(compartment, `[step]`) %>% 
+  summarise(m = mean(value)) %>% 
+  mutate(sim_type = "abm") %>% 
+  rename(time = `[step]`, value = m) %>%
+  mutate(compartment = case_when(
+    compartment == "current_not_infected" ~ "not_infected",
+    compartment == "current-colonised" ~ "infected"
+  )) %>%
+  bind_rows(output_df_long) %>% 
+  ggplot(aes(x = time, y = value, color = compartment)) +
+  geom_line() +
+  facet_wrap(~ sim_type, nrow = 2) +
+  labs(title = "Dynamics of Non-Infected and Infected Patients (Time-Varying Beta)",
+       x = "Time",
+       y = "Number of Patients",
+       color = "Compartment")
 ```
 
 # Discussion
