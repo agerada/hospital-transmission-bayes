@@ -79,13 +79,13 @@ message(glue::glue("Calibration samples: {calibration_samples},
                    ABC tolerance: {abc_tol}"))
 source(here::here("scripts", "tune", "variable_pre_outbreak.R"))
 
-##================= simulate using consts only ==================##
+##=============== simulate by uniform sampling from posterior ===============##
 # This draws parameters from the posterior means +/- SD
 # These parameter sets are used as inputs to outbreak model
 
 calibration_samples <- availableCores() * 1
 calibration_seeds <- 10
-source(here::here("scripts", "tune", "simulate_using_consts.R"))
+source(here::here("scripts", "tune", "simulate_uniform.R"))
 
 
 ###========== single outbreak only simulation =========###

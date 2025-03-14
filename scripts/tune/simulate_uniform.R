@@ -30,7 +30,7 @@ estimated_consts <- map2(estimated_consts_mean, estimated_consts_sd, \(x, y) {
 
 estimated_consts_fixed <- c(estimated_consts_mean, consts)
 
-nl@experiment <- experiment(expname = "consts_sim",
+nl@experiment <- experiment(expname = "uniform_sims",
                             outpath = out_path,
                             repetition = 1,
                             tickmetrics = "true",
@@ -55,24 +55,24 @@ nl@simdesign <- simdesign_lhs(nl,
 plan(list(sequential, multisession))
 
 if (run_sims) {
-  consts_sim <- progressr::with_progress(
+  uniform_sims <- progressr::with_progress(
     run_nl_all(nl))
-  write_rds(consts_sim, file.path(out_path, "consts_sim.rds"))
+  write_rds(uniform_sims, file.path(out_path, "uniform_sims.rds"))
 }
 
-consts_sim <- read_rds(file.path(out_path, "consts_sim.rds"))
+uniform_sims <- read_rds(file.path(out_path, "uniform_sims.rds"))
 
-consts_sim_bak <- consts_sim
-consts_sim <- consts_sim %>% 
+uniform_sims_bak <- uniform_sims
+uniform_sims <- uniform_sims %>% 
   filter(`[step]` > 31)
 
-consts_sim <- consts_sim %>% 
+uniform_sims <- uniform_sims %>% 
   group_by(`random-seed`, `siminputrow`) %>% 
   mutate(date_sim = seq(from = ymd("2002-01-01"),
                         by = "1 day",
                         length.out = n()))
 
-consts_sim_rates <- consts_sim %>% 
+uniform_sims_rates <- uniform_sims %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
   group_by(`random-seed`, `siminputrow`, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000) %>% 
@@ -80,7 +80,7 @@ consts_sim_rates <- consts_sim %>%
   ungroup() %>% 
   dplyr::select(!c(year, month))
 
-consts_sim_rates %>% 
+uniform_sims_rates %>% 
   pivot_wider(names_from = date_sim, values_from = rate) %>% 
   #slice_sample(n=10) %>% 
   pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
@@ -107,14 +107,14 @@ salgado %>%
   summarise(across(rates, list(median = median, q_low = \(x) quantile(x, 0.25), q_high = \(x) quantile(x, 0.75), min = min, max = max)))
 
 # simulated data
-pre_outbreak_sims_rates <- consts_sim_rates %>% 
+pre_outbreak_uniform_sims_rates <- uniform_sims_rates %>% 
   dplyr::filter(date_sim < outbreak_start_date) %>% 
   summarise(across(rate, list(median = median,
                               q_low = \(x) quantile(x, 0.25),
                               q_high = \(x) quantile(x, 0.75),
                               mean = mean)))
 
-outbreak_sims_rates <- consts_sim_rates %>% 
+outbreak_uniform_sims_rates <- uniform_sims_rates %>% 
   dplyr::filter(date_sim >= outbreak_start_date & date_sim <= outbreak_end_date) %>% 
   summarise(across(rate, list(median = median,
                               q_low = \(x) quantile(x, 0.25),
