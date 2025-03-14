@@ -19,15 +19,6 @@ consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
 estimated_consts_mean <- abc_params_outbreak_control$unadj.values %>%
   apply(., 2, mean)
 
-estimated_consts_sd <- abc_params_outbreak_control$unadj.values %>%
-  apply(., 2, sd)
-
-estimated_consts <- map2(estimated_consts_mean, estimated_consts_sd, \(x, y) {
-  list(min = x - y,
-       max = x + y,
-       qfun = 'qunif')
-})
-
 estimated_consts_fixed <- c(estimated_consts_mean, consts)
 
 nl@experiment <- experiment(expname = "single_outbreak_sim",
