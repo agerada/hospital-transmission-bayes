@@ -92,7 +92,7 @@ source(here::here("scripts", "tune", "simulate_uniform.R"))
 # This uses the posterior means as inputs to a single outbreak
 
 calibration_seeds <- availableCores() * 1
-source(here::here("scripts", "tune", "single_outbreak.R"))
+source(here::here("scripts", "tune", "simulate_mean.R"))
 
 # save.image(file.path(out_path, "calibrate.RData"))
 
