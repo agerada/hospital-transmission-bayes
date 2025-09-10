@@ -1,11 +1,12 @@
 ---
-title: Paper
+title: Gastro-intestinal transmission and colonisation of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings -- calibration of an agent-based model
 authors:
   - name: Alessandro Gerada
     affiliation: University of Liverpool
     roles: writing
     corresponding: true
 bibliography: references.bib
+csl: https://raw.githubusercontent.com/citation-style-language/styles/refs/heads/master/elsevier-vancouver.csl
 ---
 
 # Background
