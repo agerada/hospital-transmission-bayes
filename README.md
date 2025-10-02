@@ -22,6 +22,14 @@ cd poster
 quarto use template quarto-ext/typst-templates/poster
 ```
 
+# Paper
+
+The paper currently uses a fork of `acronyms` that can be installed using:
+
+```bash
+quarto add agerada/acronyms@markdown
+```
+
 # Model calibration
 
 On a high-level, the calibration process uses the following two step approach:
