@@ -17,6 +17,7 @@ globals
   ;;random-colonisation-thresh
   ;;amission-days
   ;;bay-capacity the number of beds in each bay
+  ;;side-room-delay-mean ;; mean delay in days (Poisson) for side room assignment
 
   total-patients-admitted
   total-colonised
@@ -37,6 +38,7 @@ globals
   b-community-colonisation-rate
   b-antibiotic-prescription-rate
   b-proportion-redistributed
+  b-side-room-delay-mean
 
   all-toilets
   all-bedspaces
@@ -45,6 +47,10 @@ globals
 
   bay-list-seq
   bay-iterator
+
+  side-room-queue ;; FIFO queue of patients waiting for side rooms
+  side-room-delay-queue ;; FIFO queue of patients waiting for delay to complete before side room assignment
+
 ]
 
 breed [patients patient]
@@ -58,6 +64,8 @@ patients-own
   my-bedspaces
   colonised?
   admission-tick
+  queue-entry-tick ;; tick when entered queue
+  delay-days ;; Poisson-sampled delay for side room
 ]
 
 patches-own
@@ -96,6 +104,10 @@ to setup
   set b-antibiotic-prescription-rate antibiotic-prescription-rate
   set b-proportion-redistributed proportion-redistributed
 
+  set side-room-queue []
+  set side-room-delay-queue []
+  set b-side-room-delay-mean side-room-delay-mean
+
   set total-patients-admitted 0
   set total-colonised 0
 
@@ -117,6 +129,7 @@ to go
   set current-inpatients count patients
   set current-colonised count patients with [ community-infection? or hospital-infection? ]
   set-variable-parameters
+  update-side-room-delay-queue
   update-patients
 ;  clean-toilets
   schedule-toilet-use
@@ -338,6 +351,20 @@ to update-patients
       set hospital-infection? true
       set total-hospital-infections total-hospital-infections + 1
       set total-colonised total-colonised + 1
+      ;; queue for side-room if currently in a bay
+      if [bay?] of one-of my-bedspaces [
+        set delay-days random-poisson side-room-delay-mean
+        ifelse delay-days = 0 [
+          if not member? self side-room-queue [
+            set side-room-queue lput self side-room-queue
+          ]
+        ] [
+          if not member? self side-room-delay-queue [
+            set queue-entry-tick ticks
+            set side-room-delay-queue lput self side-room-delay-queue
+          ]
+        ]
+      ]
     ]
   ]
 end
@@ -357,6 +384,7 @@ to use-toilet [ t ]
     contaminate-toilet self
     check-toilet-colonise-patient self
   ]
+
   move-to one-of my-bedspaces with [ not any? patients-here ]
 end
 
@@ -376,6 +404,20 @@ to check-toilet-colonise-patient [ t ]
         set total-hospital-infections total-hospital-infections + 1
         set total-colonised total-colonised + 1
         set color red
+        ;; queue for side-room if currently in a bay
+        if [bay?] of one-of my-bedspaces [
+          set delay-days random-poisson side-room-delay-mean
+          ifelse delay-days = 0 [
+            if not member? self side-room-queue [
+              set side-room-queue lput self side-room-queue
+            ]
+          ] [
+            if not member? self side-room-delay-queue [
+              set queue-entry-tick ticks
+              set side-room-delay-queue lput self side-room-delay-queue
+            ]
+          ]
+        ]
       ]
     ]
   ]
@@ -438,6 +480,21 @@ to make-patient
       set bed-availability bed-availability - 1
     ]
 
+    ;; If admitted already colonised into a bay, add to side-room queue immediately
+    if colonised? and [bay?] of one-of my-bedspaces [
+      set delay-days random-poisson side-room-delay-mean
+      ifelse delay-days = 0 [
+        if not member? self side-room-queue [
+          set side-room-queue lput self side-room-queue
+        ]
+      ] [
+        if not member? self side-room-delay-queue [
+          set queue-entry-tick ticks
+          set side-room-delay-queue lput self side-room-delay-queue
+        ]
+      ]
+    ]
+
     time:schedule-event self [ [] -> discharge-patient ]  ( ticks + random-poisson admission-days )
   ]
 end
@@ -453,14 +510,19 @@ to clean-toilets
 end
 
 to redistribute-patients
-  ask n-of ( proportion-redistributed * current-colonised ) patients with [ colonised? ] [
-    if bay? [
-      let swap-candidate one-of patients with [ not colonised? and not bay?]
-      ifelse swap-candidate = nobody [
-        ;debug show "No side room available for me"
-      ] [
-;        set color blue
-        ;debug show (word "Swapping locations with " swap-candidate ", xcor: " [xcor] of swap-candidate ", ycor: " [ycor] of swap-candidate )
+  ;; Process the queue: attempt assignment for patients in side-room-queue
+  ;; First, drop any dead patients from the queue to avoid 'That agent is dead' errors
+  set side-room-queue filter [ p -> member? p turtles ] side-room-queue
+  let processed []
+  foreach side-room-queue [ p ->
+    if member? p turtles [
+      ask p [
+      ;; Only swap if this patient is still in a bay (otherwise wait for assignment)
+      if [bay?] of one-of my-bedspaces [
+        ;; Try to swap with a non-colonized patient in a side room
+        let swap-candidate one-of patients with [ not colonised? and not [bay?] of one-of my-bedspaces ]
+        ifelse swap-candidate != nobody [
+        ;; Perform swap
         clean-toilets
         let tmp-xcor xcor
         let tmp-ycor ycor
@@ -471,26 +533,68 @@ to redistribute-patients
         set my-toilet [my-toilet] of swap-candidate
         set my-bedspaces [my-bedspaces] of swap-candidate
         ask swap-candidate [
-;          set color yellow
           clean-toilets
           set xcor tmp-xcor
           set ycor tmp-ycor
           set my-toilet tmp-my-toilet
           set my-bedspaces tmp-my-bedspaces
         ]
+        set processed lput self processed
+        ] [
+          ;; No swap available; wait for discharge
+        ]
+      ]
       ]
     ]
   ]
+  ;; Remove processed patients from the queue
+  set side-room-queue filter [ p -> not member? p processed ] side-room-queue
 end
 
 to discharge-patient
   ;; discharge patient
   ;; call this procedure from within an ask patch
+  ;; Remove self from queue if present, to avoid leaving dead references
+  set side-room-queue remove self side-room-queue
+  set side-room-delay-queue remove self side-room-delay-queue
   set admission-durations lput ( ticks - admission-tick ) admission-durations
   ask my-bedspaces [
     set bed-availability bed-availability + 1
   ]
-  ask patch-here [ make-patient ]
+
+  ;; If this was a side room, assign to the next patient in the queue (all are eligible)
+  ifelse not [bay?] of patch-here [
+    let target-bed-patch patch-here
+
+    ifelse not empty? side-room-queue [
+      let next-patient first side-room-queue
+      set side-room-queue remove next-patient side-room-queue
+      ;; capture the old bay bedspace of the patient we're moving
+      let old-bedspaces [my-bedspaces] of next-patient
+      let old-bed-patch [patch-here] of next-patient
+
+      ask next-patient [
+        move-to target-bed-patch
+        let target-ward [ward] of target-bed-patch
+        let target-bed-number [bed-number] of target-bed-patch
+        set my-toilet one-of all-toilets with [ ward = target-ward and bed-number = target-bed-number ]
+        set my-bedspaces all-bedspaces with [ ward = target-ward and bed-number = target-bed-number ]
+      ]
+
+      ;; increment availability on the old bay bedspace and backfill with a new admission
+      ask old-bedspaces [ set bed-availability bed-availability + 1 ]
+      ask old-bed-patch [ make-patient ]
+      ask my-bedspaces [
+        set bed-availability bed-availability - 1
+      ]
+    ]
+    [
+      ask target-bed-patch [ make-patient ]
+    ]
+  ] [
+    ask patch-here [ make-patient ]
+  ]
+
   clean-toilets
   die
 end
@@ -511,6 +615,7 @@ to set-variable-parameters
       set community-colonisation-rate o-community-colonisation-rate
       set antibiotic-prescription-rate o-antibiotic-prescription-rate
       set proportion-redistributed o-proportion-redistributed
+      set side-room-delay-mean o-side-room-delay-mean
     ]
     if ticks > outbreak-end
     [
@@ -521,6 +626,7 @@ to set-variable-parameters
       set community-colonisation-rate b-community-colonisation-rate
       set antibiotic-prescription-rate b-antibiotic-prescription-rate
       set proportion-redistributed b-proportion-redistributed
+      set side-room-delay-mean b-side-room-delay-mean
     ]
   ]
 
@@ -533,6 +639,7 @@ to set-variable-parameters
       set toilet-cleaning-rate c-toilet-cleaning-rate
       set antibiotic-prescription-rate c-antibiotic-prescription-rate
       set proportion-redistributed c-proportion-redistributed
+      set side-room-delay-mean c-side-room-delay-mean
     ]
     if ticks > control-end
     [
@@ -540,6 +647,7 @@ to set-variable-parameters
       set toilet-cleaning-rate b-toilet-cleaning-rate
       set antibiotic-prescription-rate b-antibiotic-prescription-rate
       set proportion-redistributed b-proportion-redistributed
+      set side-room-delay-mean b-side-room-delay-mean
     ]
   ]
 end
@@ -567,6 +675,12 @@ to read-abc-params
       user-message "The parameter file provided does not appear to be in a valid format. Please see model info"
     ]
   ]
+end
+to update-side-room-delay-queue
+    ;; Process delay queue: move patients who have completed their delay to side-room-queue
+  let eligible-patients filter [ p -> ticks >= [queue-entry-tick] of p + [delay-days] of p ] side-room-delay-queue
+  set side-room-queue sentence side-room-queue eligible-patients
+  set side-room-delay-queue filter [ p -> not member? p eligible-patients ] side-room-delay-queue
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
