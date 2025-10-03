@@ -138,6 +138,7 @@ to go
   tick
 ;  print time:show-schedule
   time:go-until ticks
+  if any-bed-collisions? [user-message "Patient collision. Some patients are in the same bed!"]
 end
 
 to setup-grid
@@ -676,6 +677,11 @@ to read-abc-params
     ]
   ]
 end
+
+to-report any-bed-collisions?
+  report any? (patches with [ bed-number > 0 and toilet? = false ]) with [ count patients-here > 1 ]
+end
+
 to update-side-room-delay-queue
     ;; Process delay queue: move patients who have completed their delay to side-room-queue
   let eligible-patients filter [ p -> ticks >= [queue-entry-tick] of p + [delay-days] of p ] side-room-delay-queue
@@ -778,7 +784,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.16
+0.302
 0.05
 1
 NIL
@@ -808,7 +814,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.744
+0.825
 0.05
 1
 NIL
@@ -823,7 +829,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-2.037
+2.878
 0.1
 1
 NIL
@@ -838,7 +844,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-0.943
+1.239
 0.1
 1
 NIL
@@ -853,7 +859,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.033
+0.07
 0.01
 1
 NIL
@@ -917,7 +923,7 @@ antibiotic-prescription-rate
 antibiotic-prescription-rate
 0
 1
-0.397
+0.289
 0.001
 1
 NIL
@@ -932,7 +938,7 @@ antibiotic-effect
 antibiotic-effect
 0
 100
-1.479
+1.544
 0.1
 1
 RR/OR
@@ -993,7 +999,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1038.654
+1041.987
 1
 1
 ticks
@@ -1008,7 +1014,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-1.687
+1.239
 0.1
 1
 NIL
@@ -1023,7 +1029,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.601
+0.302
 0.01
 1
 NIL
@@ -1038,7 +1044,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.407
+0.431
 0.01
 1
 NIL
@@ -1053,7 +1059,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-1.663
+1.179
 0.1
 1
 NIL
@@ -1068,7 +1074,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.055
+0.43
 0.01
 1
 NIL
@@ -1083,7 +1089,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.652
+0.771
 0.01
 1
 NIL
@@ -1124,7 +1130,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.773
+0.825
 0.01
 1
 NIL
@@ -1139,7 +1145,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-2.74
+2.878
 0.1
 1
 NIL
@@ -1154,7 +1160,7 @@ c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
-0.397
+0.289
 0.01
 1
 NIL
@@ -1169,7 +1175,7 @@ outbreak-end
 outbreak-end
 1
 10000
-1211.812
+1234.329
 1
 1
 NIL
@@ -1184,7 +1190,7 @@ control-end
 control-end
 1
 10000
-1337.853
+1338.933
 1
 1
 NIL
@@ -1216,7 +1222,7 @@ random-colonisation
 random-colonisation
 0
 1000
-7.327
+6.002
 0.1
 1
 cases per 10,000 bed days
@@ -1260,7 +1266,7 @@ proportion-redistributed
 proportion-redistributed
 0
 1
-0.796
+0.694
 0.01
 1
 NIL
@@ -1275,7 +1281,7 @@ c-proportion-redistributed
 c-proportion-redistributed
 0
 1
-0.804
+0.694
 0.01
 1
 NIL
@@ -1290,8 +1296,53 @@ o-proportion-redistributed
 o-proportion-redistributed
 0
 1
-0.526
+0.414
 0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+21
+600
+230
+633
+side-room-delay-mean
+side-room-delay-mean
+0
+10
+0.2
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+478
+500
+701
+533
+c-side-room-delay-mean
+c-side-room-delay-mean
+0
+10
+7.8
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+243
+580
+467
+613
+o-side-room-delay-mean
+o-side-room-delay-mean
+0
+10
+9.4
+0.1
 1
 NIL
 HORIZONTAL
@@ -1321,6 +1372,25 @@ seed-value
 1
 NIL
 VERTICAL
+
+PLOT
+471
+573
+812
+799
+Patients waiting for side rooms
+NIL
+NIL
+0.0
+5.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Side room queue" 1.0 0 -13345367 true "" "plot length side-room-queue"
+"Side room delay queue" 1.0 0 -10899396 true "" "plot length side-room-delay-queue"
 
 @#$#@#$#@
 ## Introduction
@@ -1701,7 +1771,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
