@@ -189,6 +189,9 @@ to create-ward [ t w beds ward-color ]
       ask one-of neighbors [
         set pcolor 37
         set toilet? true
+        ;; explicitly set toilet capacity to 0
+        set bed-capacity 0
+        set bed-availability 0
       ]
       set bed-counter bed-counter + 1
       ifelse item bay-iterator bay-list-seq
@@ -196,7 +199,7 @@ to create-ward [ t w beds ward-color ]
         set bay? true
         set bed-capacity 4
         set bed-availability 4
-        ask neighbors [
+        ask neighbors with [ not toilet? ] [
           set bay? true
           set bed-capacity 4
           set bed-availability 4
@@ -206,7 +209,7 @@ to create-ward [ t w beds ward-color ]
         set bay? false
         set bed-capacity 1
         set bed-availability 1
-        ask neighbors [
+        ask neighbors with [ not toilet? ] [
           set bay? false
           set bed-capacity 1
           set bed-availability 1
@@ -244,6 +247,9 @@ to create-ward [ t w beds ward-color ]
         [
           set pcolor 37
           set toilet? true
+          ;; explicitly set toilet capacity to 0
+          set bed-capacity 0
+          set bed-availability 0
         ]
         set bed-counter bed-counter + 1
         ifelse item bay-iterator bay-list-seq
@@ -251,7 +257,7 @@ to create-ward [ t w beds ward-color ]
           set bay? true
           set bed-capacity 4
           set bed-availability 4
-          ask neighbors [
+          ask neighbors with [ not toilet? ] [
             set bay? true
             set bed-capacity 4
             set bed-availability 4
@@ -261,7 +267,7 @@ to create-ward [ t w beds ward-color ]
           set bay? false
           set bed-capacity 1
           set bed-availability 1
-          ask neighbors [
+          ask neighbors with [ not toilet? ] [
             set bay? false
             set bed-capacity 1
             set bed-availability 1
