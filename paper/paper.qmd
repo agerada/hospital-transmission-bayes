@@ -328,7 +328,7 @@ param_units <- c("toilet-frequenting-rate" = "times per day",
                  "antibiotic-prescription-rate" = "percentage of admissions",
                  "antibiotic-effect" = "relative risk",
                  "random-colonisation" = "cases per 10,000 bed days",
-                 "proportion-redistributed" = "proportion of patients")
+                 "side-room-delay-mean" = "days")
 
 param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
                  "toilet-cleaning-rate" = "Toilet cleaning rate",
@@ -338,7 +338,7 @@ param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
                  "antibiotic-prescription-rate" = "Antibiotic prescription rate",
                  "antibiotic-effect" = "Antibiotic effect",
                  "random-colonisation" = "Random colonisation",
-                 "proportion-redistributed" = "Proportion redistributed")
+                 "side-room-delay-mean" = "Side room delay mean")
 
 params_table %>% 
   pivot_longer(cols = everything(), names_to = c("period", "param"), values_to = "value",
@@ -603,7 +603,7 @@ list(
     # value = if_else(param == "c-antibiotic-prescription-rate", value * 100, value),
     param = case_when(
       param == "c-antibiotic-prescription-rate" ~ "Antimicrobial prescription rate",
-      param == "c-proportion-redistributed"     ~ "Proportion redistributed",
+      param == "c-side-room-delay-mean"     ~ "Side room delay mean",
       param == "c-toilet-cleaning-rate"         ~ "Toilet cleaning rate",
       param == "c-toilet-cleaning-effect"       ~ "Toilet cleaning effect",
       TRUE                                      ~ param

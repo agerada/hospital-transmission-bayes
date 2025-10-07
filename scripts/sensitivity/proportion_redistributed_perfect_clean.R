@@ -27,7 +27,7 @@ consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
 estimated_consts_mean <- abc_params_outbreak_control$unadj.values %>%
   apply(., 2, mean)
 
-estimated_consts_mean <- estimated_consts_mean[names(estimated_consts_mean) != "c-proportion-redistributed"]
+estimated_consts_mean <- estimated_consts_mean[names(estimated_consts_mean) != "c-side-room-delay-mean"]
 
 # fix to perfect clean
 estimated_consts_mean["c-toilet-cleaning-effect"] <- 1
@@ -49,8 +49,8 @@ nl@experiment <- experiment(expname = "sens_analysis",
                                         "current-inpatients",
                                         "current-colonised"),
                             constants = c(consts, estimated_consts_mean), 
-                            variables = list("c-proportion-redistributed" = list(min=0.01,
-                                                                                 max=0.99,
+                            variables = list("c-side-room-delay-mean" = list(min=0.01,
+                                                                                 max=7,
                                                                                  qfun='qunif')
                             )
 )
@@ -83,7 +83,7 @@ sens_prop_redist_perfect_clean <- sens_prop_redist_perfect_clean %>%
 
 sens_prop_redist_perfect_clean_rates <- sens_prop_redist_perfect_clean %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
-  group_by(`random-seed`, `c-proportion-redistributed`, year, month) %>% 
+  group_by(`random-seed`, `c-side-room-delay-mean`, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000) %>% 
   mutate(date_sim = ymd(paste0(year, "-", month, "-01"))) %>% 
   ungroup() %>% 
@@ -99,19 +99,19 @@ filter_to <- round(max(time_triggers))
 sens_prop_redist_perfect_clean_outbreak_rates <- sens_prop_redist_perfect_clean %>% 
   filter(`[step]` >= filter_from & `[step]` <= filter_to) %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>% 
-  group_by(`random-seed`, `c-proportion-redistributed`, year, month) %>% 
+  group_by(`random-seed`, `c-side-room-delay-mean`, year, month) %>% 
   summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000) %>% 
   mutate(date_sim = ymd(paste0(year, "-", month, "-01"))) %>% 
   ungroup() %>% 
   dplyr::select(!c(year, month))
 
 sens_prop_redist_perfect_clean_outbreak_rates %>% 
-  group_by(`c-proportion-redistributed`, `random-seed`) %>% 
+  group_by(`c-side-room-delay-mean`, `random-seed`) %>% 
   summarise(rate = mean(rate)) %>%
-  group_by(`c-proportion-redistributed`) %>%
+  group_by(`c-side-room-delay-mean`) %>%
   summarise(mean_rate = mean(rate),
             sd_rate = sd(rate)) %>% 
-  ggplot(aes(x = `c-proportion-redistributed`, y = mean_rate)) +
+  ggplot(aes(x = `c-side-room-delay-mean`, y = mean_rate)) +
   geom_line() + 
   # add sd
   geom_line(data = . %>% 
@@ -126,15 +126,15 @@ sens_prop_redist_perfect_clean_outbreak_rates %>%
 sens_prop_redist_perfect_clean_outbreak_cases <- sens_prop_redist_perfect_clean %>% 
   filter(`[step]` >= filter_from & `[step]` <= filter_to) %>% 
   mutate(year = year(date_sim), month = month(date_sim)) %>%
-  group_by(`random-seed`, `c-proportion-redistributed`) %>% 
+  group_by(`random-seed`, `c-side-room-delay-mean`) %>% 
   mutate(`outbreak-cases` = `total-hospital-infections` - min(`total-hospital-infections`)) %>% 
   summarise(`outbreak-cases` = max(`outbreak-cases`))
 
 sens_prop_redist_perfect_clean_outbreak_cases %>% 
-  group_by(`c-proportion-redistributed`) %>% 
+  group_by(`c-side-room-delay-mean`) %>% 
   summarise(mean_cases = mean(`outbreak-cases`),
             sd_cases = sd(`outbreak-cases`)) %>% 
-  ggplot(aes(x = `c-proportion-redistributed`, y = mean_cases)) +
+  ggplot(aes(x = `c-side-room-delay-mean`, y = mean_cases)) +
   geom_line() + 
   # add sd
   geom_line(data = . %>% 
@@ -159,7 +159,7 @@ list(abx_prescription_rate = sens_abx_prescription_outbreak_cases,
   geom_line() + 
   facet_wrap(~ param)
 
-sens_prop_redist_perfect_clean_outbreak_cases %>% pivot_longer(cols = `c-proportion-redistributed`,
+sens_prop_redist_perfect_clean_outbreak_cases %>% pivot_longer(cols = `c-side-room-delay-mean`,
                                                                names_to = "param",
                                                                values_drop_na = TRUE) %>% 
   group_by(param, value) %>% 

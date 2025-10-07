@@ -27,7 +27,7 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "antibiotic-effect" = list(min=1.31, max=1.87, qfun='qunif'),
                                              "toilet-cleaning-rate" = list(min=0.5, max=3, qfun='qunif'),
                                              "random-colonisation" = list(min=2.8, max=12.1, qfun='qunif'),
-                                             "proportion-redistributed" = list(min=0.01, max=0.99, qfun='qunif')
+                                             "side-room-delay-mean" = list(min=0.01, max=7, qfun='qunif')
                             ),
                             constants = list("wards-total" = wards_total,
                                              "outbreak?" = FALSE,

@@ -73,8 +73,8 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "o-antibiotic-prescription-rate" = list(min=antibiotic_prescription_rate,
                                                                    max=min(0.99, antibiotic_prescription_rate + upper_bound_scale * antibiotic_prescription_rate), # also from Vesporten 2018
                                                                    qfun='qunif'),
-                           "o-proportion-redistributed" = list(min=0.01,
-                                                               max=pre_outbreak_variables[["proportion-redistributed"]]$max,
+                           "o-side-room-delay-mean" = list(min=0.01,
+                                                               max=7,
                                                                qfun='qunif'),
                            "c-toilet-cleaning-effect" = list(min=pre_outbreak_variables[["toilet-cleaning-effect"]]$min,
                                                              max=0.99,
@@ -85,8 +85,8 @@ outbreak_variables <- list("outbreak-start" = list(min=outbreak_start - 90,
                            "c-antibiotic-prescription-rate" = list(min=max(0.01, antibiotic_prescription_rate - lower_bound_scale * antibiotic_prescription_rate),
                                                                    max=antibiotic_prescription_rate,
                                                                    qfun='qunif'),
-                           "c-proportion-redistributed" = list(min=pre_outbreak_variables[["proportion-redistributed"]]$min,
-                                                               max=0.99,
+                           "c-side-room-delay-mean" = list(min=0.01,
+                                                               max=7,
                                                                qfun='qunif')
 )
 
