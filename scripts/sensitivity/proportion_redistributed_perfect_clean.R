@@ -10,7 +10,7 @@ sim_days <- (365 * 7) + 30
 
 # outbreak_control_model <- "salgado.nlogo"
 
-nl <- nl(nlversion = "6.2.2",
+nl <- nl(nlversion = nl_version,
          nlpath = netlogo_path,
          modelpath = model_path,
          jvmmem = 1024)

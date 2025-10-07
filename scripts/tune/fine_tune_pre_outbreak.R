@@ -1,6 +1,6 @@
 sim_days <- (365 * 3) + 30
 
-nl <- nl(nlversion = "6.2.2",
+nl <- nl(nlversion = nl_version,
          nlpath = netlogo_path,
          modelpath = model_path,
          jvmmem = 1024)

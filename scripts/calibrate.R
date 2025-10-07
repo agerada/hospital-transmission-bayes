@@ -13,6 +13,7 @@ bedspaces_per_ward <- 9
 set.seed(42)
 
 netlogo_path <- "/Applications/NetLogo 6.2.2/"
+nl_version <- "6.2.2"
 model_path <- here::here("models", "hospital_transmission.nlogo")
 out_path <- here::here("out")
 data_path <- here::here("data")
