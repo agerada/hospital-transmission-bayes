@@ -36,6 +36,8 @@ acronyms:
     longname: approximate Bayesian computation
   - shortname: IQR
     longname: interquartile range
+  - shortname: FIFO
+    longname: first-in, first-out
   insert_loa: false
 ---
 
@@ -112,7 +114,7 @@ where:
 -   $x_p(t) = 0$ if patient $p$ is not infected at time $t$,
 -   $x_p(t) = 1$ if patient $p$ is infected at time $t$.
 
-Since the simulation's target diseases were associated with long term colonisation, and risk of onward transmission, after the initial infection event, it was assumed that infection was not reversible during the simulation, i.e., that infected patients remained colonised until discharge. At each time increment, the probability of a non-colonised/infected patient acquiring infection (i.e., transitioning from a non-infected/colonised to infected/colonised state) depended on: 1) a baseline risk of *de novo* infection/colonisation:
+Since the simulation's target diseases were associated with long term colonisation, and risk of onward transmission, after the initial infection event, it was assumed that infection was not reversible during the simulation, i.e., that infected patients remained infected until discharge. At each time increment, the probability of a non-infected patient acquiring infection (i.e., transitioning from a non-infected to infected state) depended on: 1) a baseline risk of *de novo* infection:
 
 $$ 
 P_\text{de novo}(t) = 1 - \text{exp}{ {( - r_0 T(t) )} },
@@ -165,9 +167,14 @@ $$
 
 where $X_i(t)$ = 1 if patient $p$ becomes infected at time $t$, and 0 otherwise.
 
-## Deterministic model
+During the simulation level of contamination of each toilet increased when an infected patient used it, and decreased
+when the toilet was cleaned. 
 
-A deterministic representation of the model was described in terms of the following differential equations, an adaptation of *SI* (susceptible--infection) models [@andersonDiscussionKermackMcKendrickEpidemic1991; @keelingModelingInfectiousDiseases2011]:
+Infected patients were moved to single-occupancy rooms (side rooms) after infection. To capture delays in moving patients into side rooms (which can be due to delays in diagnosis, and/or lack of available side rooms), the simulation included an optional parameter that samples the delay from a Poisson distribution with a configurable mean (in days). Once the infected patient has completed their delay, they became eligible to move to the next available side room. To implement this, the simulation used a \acr{FIFO} queue to track infected patients waiting for a side room. While direct patient swaps were possible (i.e., swapping a non-infected patient in a side room with an infected patient waiting for a side room), more complex swaps involving multiple patients were not implemented.
+
+## Stochastic system dynamics model
+
+To build a high-level system dynamics model, a deterministic model was firstly described in terms of the following differential equations (see @fig-sd-model), an adaptation of *SI* (susceptible--infection) models [@andersonDiscussionKermackMcKendrickEpidemic1991; @keelingModelingInfectiousDiseases2011]:
 
 $$
 \frac{dS}{dt} = (1-p)A - D \cdot \frac{S}{S + I} - \beta S - rS
@@ -181,20 +188,81 @@ where:
 
 -   $dS/dt$ is the rate of change of susceptible/non-infected inpatients,
 -   $S$ is the number of susceptible inpatients,
--   $I$ is the number of infected/colonised inpatients,
+-   $I$ is the number of infected inpatients,
 -   $A$ is the rate of new admissions,
--   $p$ is the community colonisatio rate,
+-   $p$ is the community colonisation rate,
 -   $\beta$ is the transmission coefficient,
--   $r$ is the rate of random (*de novo*) colonisation/infection,
+-   $r$ is the rate of random (*de novo*) infection,
 -   $D$ is the rate of patient discharges.
 
 The hospital capacity was constantly kept at 100% occupancy (i.e., patients were immediately replaced on discharge), therefore, $D = A$.
 
-![System dynamics model](images/sd_model.svg)
+![System dynamics model](images/sd_model.svg){#fig-sd-model}
+
+To add stochasticity to the model, the number of susceptible and infected patients at each discrete time $t + 1$ was calculated by first determining the number of patients discharged:
+
+$$
+D_{\text{total}, t} \sim \text{Poisson}(D),
+$$
+
+where $D_{\text{total}, t}$ is the total number of patients (both susceptible, $D_S$, and infected $D_I$), discharged at time $t$.
+Therefore, $D_{\text{total}, t} = D_{S,t} + D_{I,t}$, where:
+
+$$
+D_{S,t} = \Bigl \lfloor D_{\text{total}, t} \cdot \frac{S_t}{S_t + I_t} \Bigr \rceil,
+$$
+
+and
+
+$$
+D_{I,t} = \Bigl \lfloor D_{\text{total}, t} \cdot \frac{I_t}{S_t + I_t} \Bigr \rceil = D_{\text{total}, t} - D_{S,t},,
+$$
+
+where $\lfloor x \rceil$ is the rounding of $x$ to the nearest integer.
+
+Next, new admissions were calculated. Since $A_{\text{total}, t} = D_{\text{total}, t}$,
+
+$$
+A_{I,t} \sim \text{Binomial}(A_{\text{total}, t}, p),
+$$
+
+and
+
+$$
+A_{S,t} = A_{\text{total}, t} - A_{I,t},
+$$
+
+To calculate the number of hospital-acquired infections (i.e., $\beta S_t + r S_t$), the binomial distribution was used:
+
+$$
+\text{HAI}_{\text{transmission}, t} \sim \text{Binomial}(S_t - D_{S, t}, \beta),
+$$
+
+and
+
+$$
+\text{HAI}_{\text{de novo}, t} \sim \text{Binomial}(S_t - D_{S, t} - \text{HAI}_{\text{transmission}, t}, r),
+$$
+
+where $\text{HAI}_{\text{transmission}, t}$ is the number of hospital-acquired infections due to transmission at time $t$, and $\text{HAI}_{\text{de novo}, t}$ is the number of hospital-acquired infections due to *de novo* infection at time $t$.
+
+Finally, the number of susceptible and infected patients at time $t + 1$ was updated as:
+
+$$
+S_{t+1} = S_t + A_{S,t} - D_{S,t} - \text{HAI}_{\text{transmission}, t} - \text{HAI}_{\text{de novo}, t},
+$$
+
+and
+
+$$
+I_{t+1} = I_t + A_{I,t} - D_{I,t} + \text{HAI}_{\text{transmission}, t} + \text{HAI}_{\text{de novo}, t}.
+$$
 
 ## Outbreak generation {#sec-outbreak-generation}
 
 To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced \acr{IPC} measures. 
+
+A similar approach was used to generate outbreaks in the stochastic system dynamics model, with the exception that the parameters were changed at: 1) onset of outbreak; and 2) end of outbreak. The parameters that were changed were: 1) $\beta$ (transmission coefficient); and 2) $p$ (community colonisation rate). The parameter $r$ (rate of random infection) was kept constant throughout the simulation. 
 
 ## Model inputs and outputs
 
@@ -281,7 +349,7 @@ sens_n_seeds <- length(unique(uniform_sims$siminputrow))
 ```
 
 
-To assess the sensitivity of the calibrated model to changes in parameters, a single-parameter local sensitivity analysis was performed [@railsback232SensitivityAnalysis2019]. Four parameters that reflected modifiable infection control practices were chosen for the sensitivity analysis: 1) antimicrobial prescription rates; 2) proportion of patients redistributed to a single-occupancy bed after infection; 3) toilet cleaning rate; and 4) toilet cleaning effect. To conduct the sensitivity analysis, all the parameters except the one of interest were fixed at the posterior mean values, determined using the rejection \acr{ABC} Next, the parameter of interest was varied through a range of values, and used as an input to the simulation model at each value. The output metric was the number of cases of hospital-acquired infection/colonisation within the outbreak period. For each parameter value, the simulation was run with `r sens_n_seeds` different random number generator seeds to account for stochasticity in the model -- the output metric was the mean number of cases across the `r sens_n_seeds` runs.
+To assess the sensitivity of the calibrated model to changes in parameters, a single-parameter local sensitivity analysis was performed [@railsback232SensitivityAnalysis2019]. Four parameters that reflected modifiable infection control practices were chosen for the sensitivity analysis: 1) antimicrobial prescription rates; 2) the mean delay between patient infection and transfer to a side room; 3) toilet cleaning rate; and 4) toilet cleaning effect. To conduct the sensitivity analysis, all the parameters except the one of interest were fixed at the posterior mean values, determined using the rejection \acr{ABC} Next, the parameter of interest was varied through a range of values, and used as an input to the simulation model at each value. The output metric was the number of cases of hospital-acquired infection/colonisation within the outbreak period. For each parameter value, the simulation was run with `r sens_n_seeds` different random number generator seeds to account for stochasticity in the model -- the output metric was the mean number of cases across the `r sens_n_seeds` runs.
 
 ## Software implementation
 
@@ -617,7 +685,7 @@ list(
   ggh4x::facetted_pos_scales(
     x = list(
       # LHS is evaluated against the facet layout; RHS is the scale to use for matching facets
-      param %in% c("Antimicrobial prescription rate", "Proportion redistributed", "Toilet cleaning effect") ~
+      param %in% c("Antimicrobial prescription rate", "Toilet cleaning effect") ~
         scale_x_continuous(
           labels = scales::label_percent(scale = 100)   # data already on 0-100 so use scale=1
         )
