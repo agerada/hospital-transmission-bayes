@@ -579,7 +579,7 @@ The sensitivity analysis explored the impact of different infection control prac
 
 ```{r fig-sensitivity-analysis, include=TRUE, eval=TRUE}
 #| echo: false
-#| fig-cap: "Sensitivity analysis of the model to changes in key infection control parameters. The y axis shows the total number of nosocomial infections during the outbreak period. Antimicrobial prescription rate represents the percentage of patients that were administered an antimicrobial during their admission. Proportion redistributed represents the proportion of infected patients that were moved to a single-occupancy room (lower values represent fewer patients being moved). Toilet cleaning effect represents the effectiveness of cleaning in reducing toilet contamination (100% = complete removal of contamination; 0% = no cleaning effect). Toilet cleaning rate represents the number of times toilets were cleaned per day, on average."
+#| fig-cap: "Sensitivity analysis of the model to changes in key infection control parameters. The y axis shows the total number of nosocomial infections during the outbreak period. Antimicrobial prescription rate represents the percentage of patients that were administered an antimicrobial during their admission. Side room delay is the mean number of days an infected patient remained in a bay before being moved to a side room. Toilet cleaning effect represents the effectiveness of cleaning in reducing toilet contamination (100% = complete removal of contamination; 0% = no cleaning effect). Toilet cleaning rate represents the number of times toilets were cleaned per day, on average."
 list(
   abx_prescription_rate    = sens_abx_prescription_outbreak_cases,
   proportion_redistributed = sens_prop_redist_outbreak_cases,
@@ -603,8 +603,8 @@ list(
     # value = if_else(param == "c-antibiotic-prescription-rate", value * 100, value),
     param = case_when(
       param == "c-antibiotic-prescription-rate" ~ "Antimicrobial prescription rate",
-      param == "c-side-room-delay-mean"     ~ "Side room delay mean",
-      param == "c-toilet-cleaning-rate"         ~ "Toilet cleaning rate",
+      param == "c-side-room-delay-mean"     ~ "Side room delay mean (days)",
+      param == "c-toilet-cleaning-rate"         ~ "Toilet cleaning rate (per day)",
       param == "c-toilet-cleaning-effect"       ~ "Toilet cleaning effect",
       TRUE                                      ~ param
     )
@@ -650,7 +650,7 @@ sens_abx_prescription_pre_outbreak_outbreak_cases %>%
   ylab("Number of infected patients")
 ```
 
-```{r run-deterministic-model, include=FALSE, cache=TRUE}
+```{r run-deterministic-model, eval=FALSE, include=FALSE, cache=TRUE}
 # Parameters and time-dependent functions
 parameters <- list(
   # p = 1 - unique(mean_sims$`community-colonisation-rate`),      # Proportion of non-infected admissions
@@ -802,7 +802,7 @@ output_long <- reshape2::melt(output_df, id = "time")
 Rcpp::sourceCpp("../models/sd_stochastic.cpp")
 ```
 
-```{r run-stochastic-sd-model, include=FALSE, cache=TRUE}
+```{r run-stochastic-sd-model, include=FALSE, cache=TRUE, cache.lazy=FALSE}
 set.seed(42)
 randomLHS_sd <- randomLHS(1000000, 8)
 sd_param_grid <- data.frame(init_population = rep(610, 1000),
@@ -868,7 +868,8 @@ sd_sumstats <- sd_sims_rates_mean %>%
 
 # abc
 abc_sd <- abc(salgado$rates,
-              sd_param_grid, dplyr::select(sd_sumstats, -param_row), tol=0.0025, method='rejection')
+              dplyr::select(sd_param_grid, -param_row, n_days),
+              dplyr::select(sd_sumstats, -param_row), tol=0.0025, method='rejection')
 
 # posterior predictive checks
 posterior_check_params <- abc_sd$unadj.values %>% 
@@ -878,11 +879,10 @@ posterior_check_params <- abc_sd$unadj.values %>%
 
 posterior_predictive_sim_sd <- 
   pmap_dfr(posterior_check_params,
-        \(init_population, A, r, baseline_beta, baseline_p, outbreak_beta, outbreak_p, outbreak_start, outbreak_end, n_days, param_row, seed) {
+        \(init_population, A, r, baseline_beta, baseline_p, outbreak_beta, outbreak_p, outbreak_start, outbreak_end, n_days, seed) {
             set.seed(seed)
             sd_stochastic(init_population, A, r, baseline_beta, baseline_p, outbreak_beta, outbreak_p, outbreak_start, outbreak_end, n_days) %>% 
-              mutate(`random-seed` = seed,
-                     param_row = param_row) %>% 
+              mutate(`random-seed` = seed) %>% 
               bind_rows()
         }, .progress = T)
 
@@ -905,7 +905,7 @@ posterior_predictive_sim_sd_rates <- posterior_predictive_sim_sd %>%
 
 ```
 
-```{r fig-single-outbreak-deterministic-one-plot, include=FALSE}
+```{r fig-single-outbreak-deterministic-one-plot, include=FALSE, eval=FALSE}
 #| echo: false
 #| message: false
 #| fig.cap: "Comparison of infection rates produced by the agent-based model and the deterministic model. The r"
@@ -925,7 +925,7 @@ single_outbreak_one_seed %>%
   xlim(500, 2000)
 ```
 
-```{r fig-single-outbreak-deterministic-faceted, include=TRUE}
+```{r fig-single-outbreak-deterministic-faceted, include=FALSE, eval=FALSE}
 #| echo: false
 #| message: false
 #| fig.cap: "Comparison of infection rates produced by the agent-based model and the deterministic model. The parameters for the deterministic model were determined using approximate Bayesian computation, using the output from a single run of the agent-based model as a reference."
@@ -961,6 +961,19 @@ single_outbreak_one_seed %>%
 ```{r fig-abc-sd-posteriors, include=TRUE}
 #| echo: false
 #| fig.cap: "Posterior distributions of parameters obtained from approximate Bayesian computation using summary statistics generated from the stochastic deterministic model. The red line shows the prior distribution; the blue line shows the posterior distribution."
+
+sd_posterior_params_abc <- abc_sd$unadj.values
+colnames(sd_posterior_params_abc) <- names(dplyr::select(sd_param_grid, -param_row))
+sd_posterior_params_abc %>% 
+  as.data.frame() %>% 
+  dplyr::select(r, baseline_beta, baseline_p, outbreak_beta, outbreak_p) %>% 
+  pivot_longer(cols = everything(), names_to = "parameter", values_to = "value") %>% 
+  mutate(parameter = factor(parameter, 
+                            levels = c("r", "baseline_beta", "outbreak_beta", "baseline_p", "outbreak_p"))) %>% 
+  ggplot(aes(x = value)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  facet_wrap(~ parameter, scales = "free")
+
 ```
 
 ```{r fig-abc-sd-simulated-rates, include=TRUE}
@@ -990,7 +1003,6 @@ abc_sd$ss %>% as.matrix %>%
 #| fig.cap: "Posterior predictive check of the stochastic deterministic model. Simulations were generated by sampling with replacement from the posterior parameter distributions after approximate Bayesian computation. Each simulation was run using different random number generators. The red line shows the true observed infection rates. The black solid line shows the median simulated rates; the dashed lines show the 25^th^ and 75^th^ quantiles."
 
 ```
-
 
 # Discussion
 
