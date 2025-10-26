@@ -1,10 +1,12 @@
+source("scripts/helpers/simdesign_random_helpers.R")
+
 sim_days <- (365 * 3) + 30
 # sim_hours <- sim_days * 24
 
 nl <- nl(nlversion = nl_version,
          nlpath = netlogo_path,
          modelpath = model_path,
-         jvmmem = 1024)
+         jvvmem = 1024)
 
 nl@experiment <- experiment(expname = "baseline_rate",
                             outpath = out_path,
@@ -37,10 +39,14 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "admission-days" = admission_days,
                                              "bay-proportion" = bay_proportion))
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = calibration_samples,
-                              nseeds = calibration_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_random(nl,
+                                 samples = calibration_samples,
+                                 nseeds = calibration_seeds,
+                                 precision = 3)
+# Note: simdesign_random draws independent random samples from the prior distributions
+# defined in nl@experiment@variables, unlike simdesign_lhs which uses Latin Hypercube Sampling.
+# Seeds are generated using nlrx:::util_generate_seeds for reproducibility.
+# To control randomness, set a seed before calling this function.
 
 plan(list(sequential, multisession))
 
