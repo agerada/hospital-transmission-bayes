@@ -1,3 +1,5 @@
+source("scripts/helpers/simdesign_random_helpers.R")
+
 sim_days <- (365 * 3) + 30
 
 nl <- nl(nlversion = nl_version,
@@ -40,10 +42,10 @@ nl@experiment <- experiment(expname = "fine_tune",
                                              "admission-days" = admission_days,
                                              "bay-proportion" = bay_proportion))
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = calibration_samples,
-                              nseeds = calibration_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_random(nl,
+                                 samples = calibration_samples,
+                                 nseeds = calibration_seeds,
+                                 precision = 3)
 
 plan(list(sequential, multisession))
 

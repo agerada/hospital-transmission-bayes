@@ -1,3 +1,5 @@
+source("scripts/helpers/simdesign_random_helpers.R")
+
 sim_days <- (365 * 7) + 30
 
 # outbreak_control_model <- "salgado.nlogo"
@@ -109,10 +111,10 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             variables = outbreak_variables,
                             constants = consts)
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = calibration_samples * 4,
-                              nseeds = calibration_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_random(nl,
+                                 samples = calibration_samples * 4,
+                                 nseeds = calibration_seeds,
+                                 precision = 3)
 
 # keep simulated parameters that fit with outbreak generation
 nl@simdesign@siminput <- nl@simdesign@siminput %>%

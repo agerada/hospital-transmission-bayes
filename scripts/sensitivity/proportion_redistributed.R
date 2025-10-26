@@ -36,16 +36,15 @@ nl@experiment <- experiment(expname = "sens_analysis",
                                         "current-inpatients",
                                         "current-colonised"),
                             constants = c(consts, estimated_consts_mean), 
-                            variables = list("c-side-room-delay-mean" = list(min=0.01,
-                                                                                 max=7,
-                                                                                 qfun='qunif')
+                            variables = list(
+                              "c-side-room-delay-mean" = list(
+                                values = seq(from = 0.01, to = 7, length.out = sens_samples)
+                              )
                             )
 )
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = sens_samples,
-                              nseeds = sens_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_distinct(nl,
+                                   nseeds = sens_seeds)
 
 plan(list(sequential, multisession))
 

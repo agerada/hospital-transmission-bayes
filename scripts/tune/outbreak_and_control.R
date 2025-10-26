@@ -1,3 +1,5 @@
+source("scripts/helpers/simdesign_random_helpers.R")
+
 sim_days <- (365 * 7) + 30
 
 # outbreak_control_model <- "salgado_v0.3.nlogo"
@@ -83,10 +85,10 @@ nl@experiment <- experiment(expname = "outbreak_control",
                             variables = outbreak_variables,
                             constants = consts)
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = calibration_samples,
-                              nseeds = calibration_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_random(nl,
+                                 samples = calibration_samples,
+                                 nseeds = calibration_seeds,
+                                 precision = 3)
 
 plan(list(sequential, multisession))
 

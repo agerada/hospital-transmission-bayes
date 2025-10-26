@@ -36,16 +36,15 @@ nl@experiment <- experiment(expname = "sens_analysis",
                                         "current-inpatients",
                                         "current-colonised"),
                             constants = c(consts, estimated_consts_mean), 
-                            variables = list("c-toilet-cleaning-effect" = list(min=0.01,
-                                                                               max=0.99,
-                                                                               qfun='qunif')
+                            variables = list(
+                              "c-toilet-cleaning-effect" = list(
+                                values = seq(from = 0.01, to = 0.99, length.out = sens_samples)
+                              )
                             )
 )
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = sens_samples,
-                              nseeds = sens_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_distinct(nl,
+                                   nseeds = sens_seeds)
 
 plan(list(sequential, multisession))
 
