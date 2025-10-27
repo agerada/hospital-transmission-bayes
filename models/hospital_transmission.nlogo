@@ -692,8 +692,8 @@ end
 GRAPHICS-WINDOW
 810
 10
-1564
-765
+2794
+1995
 -1
 -1
 8.2
@@ -706,10 +706,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--45
-45
--45
-45
+-120
+120
+-120
+120
 0
 0
 1
@@ -759,7 +759,7 @@ bedspaces-per-ward
 bedspaces-per-ward
 0
 20
-9.0
+16.0
 1
 1
 NIL
@@ -799,7 +799,7 @@ bay-proportion
 bay-proportion
 0
 1
-0.6
+0.2
 0.1
 1
 NIL
@@ -911,8 +911,8 @@ CHOOSER
 178
 wards-total
 wards-total
-4 9 16 32
-1
+4 9 16 24 32
+3
 
 SLIDER
 22
