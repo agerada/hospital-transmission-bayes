@@ -111,16 +111,60 @@ to setup
   set total-patients-admitted 0
   set total-colonised 0
 
-  set bay-list-seq bay-list
+  set bay-list-seq bay-list distribute-bays?
   set bay-iterator 0
 
   setup-grid
+
+  ;; Print a summary of the hospital design for quick verification
+  print-hospital-design
 
   set all-toilets patches with [ toilet? = true ]
   set all-bedspaces patches with [ toilet? = false and bed-number > 0 ]
   set bay-bedspaces all-bedspaces with [ bay? ]
   set side-room-bedspaces all-bedspaces with [ not bay? ]
   populate-patients
+end
+
+to print-hospital-design
+  ;; Prints key aspects of the hospital layout created during setup
+  ;; 1) number of wards
+  ;; 2) patient capacity
+  ;; 3) number of bays (bedspaces that are bays)
+  ;; 4) number of side rooms (non-bays)
+  ;; 5) range of bays per ward (min, median, max)
+
+  let wards remove-duplicates map [ x -> item 0 x ] ward-outline
+  let num-wards length wards
+
+  let num-bays length filter [ x -> item 2 x ] ward-outline
+  let num-side-rooms length filter [ x -> not item 2 x ] ward-outline
+
+  let patient-capacity (num-bays * 4) + num-side-rooms
+
+  ;; compute number of bays in each ward
+  let bays-per-ward map [ w -> length filter [ x -> item 0 x = w and item 2 x ] ward-outline ] wards
+  let min-bays min bays-per-ward
+  let max-bays max bays-per-ward
+  let median-bays median-of bays-per-ward
+
+  show (word "Hospital design summary:")
+  show (word "  Wards: " num-wards)
+  show (word "  Patient capacity: " patient-capacity)
+  show (word "  Bays: " num-bays)
+  show (word "  Side rooms: " num-side-rooms)
+  show (word "  Bays per ward (min/median/max): " min-bays "/" median-bays "/" max-bays)
+end
+
+to-report median-of [ lst ]
+  ;; Returns the median of a non-empty numeric list. If empty, returns 0.
+  if empty? lst [ report 0 ]
+  let s sort lst
+  let n length s
+  if n mod 2 = 1 [ report item ((n - 1) / 2) s ]
+  let lower item (n / 2 - 1) s
+  let upper item (n / 2) s
+  report (lower + upper) / 2
 end
 
 to go
@@ -173,11 +217,31 @@ to setup-grid
   ]
 end
 
-to-report bay-list
+to-report bay-list [ distribute ]
   let n-rooms wards-total * bedspaces-per-ward
-  let bay-seq n-values ( bay-proportion * n-rooms ) [ true ]
-  let non-bay-seq n-values ( n-rooms - length bay-seq ) [ false ]
-  report shuffle sentence bay-seq non-bay-seq
+  if not distribute [
+    let bay-seq n-values ( bay-proportion * n-rooms ) [ true ]
+    let non-bay-seq n-values ( n-rooms - length bay-seq ) [ false ]
+    report shuffle sentence bay-seq non-bay-seq
+  ]
+
+  ;; Distribute bays as evenly as possible across wards
+  let total-bays floor (bay-proportion * n-rooms)
+  let base-per-ward floor (total-bays / wards-total)
+  let extra-bays total-bays - (base-per-ward * wards-total)
+
+  let seq []
+  let w 0
+  while [ w < wards-total ] [
+  let nb base-per-ward + (ifelse-value (w < extra-bays) [ 1 ] [ 0 ])
+    ;; safety clamp (shouldn't trigger in normal ranges)
+    if nb > bedspaces-per-ward [ set nb bedspaces-per-ward ]
+    let bay-seq n-values nb [ true ]
+    let non-bay-seq n-values ( bedspaces-per-ward - nb ) [ false ]
+    set seq sentence seq ( sentence bay-seq non-bay-seq )
+    set w w + 1
+  ]
+  report seq
 end
 
 to create-ward [ t w beds ward-color ]
@@ -793,7 +857,7 @@ HORIZONTAL
 SLIDER
 21
 218
-193
+144
 251
 bay-proportion
 bay-proportion
@@ -1391,6 +1455,17 @@ true
 PENS
 "Side room queue" 1.0 0 -13345367 true "" "plot length side-room-queue"
 "Side room delay queue" 1.0 0 -10899396 true "" "plot length side-room-delay-queue"
+
+SWITCH
+105
+248
+242
+281
+distribute-bays?
+distribute-bays?
+0
+1
+-1000
 
 @#$#@#$#@
 ## Introduction
