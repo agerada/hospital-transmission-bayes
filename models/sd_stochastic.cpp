@@ -34,14 +34,18 @@ DataFrame sd_stochastic(
   IntegerVector dis_S_out(n_days + 1);
   IntegerVector dis_I_out(n_days + 1);
   
+  // initial record
   days[0]        = 0;
   S_out[0]       = S;
   I_out[0]       = I;
   comm_cases[0]  = 0;
   hosp_cases[0]  = 0;
+  dis_S_out[0]   = 0;
+  dis_I_out[0]   = 0;
   
   // simulation loop
   for (int t = 1; t <= n_days; ++t) {
+    // choose parameter regime
     double beta, p;
     if (t > outbreak_start && t < outbreak_end) {
       beta = outbreak_beta;
@@ -51,7 +55,7 @@ DataFrame sd_stochastic(
       p    = baseline_p;
     }
     
-    // --- Discharges ---
+    // --- 1. Discharges ---
     int total_leave = R::rpois(A);
     int total_pop   = S + I;
     if (total_pop == 0) total_pop = 1;
@@ -59,27 +63,32 @@ DataFrame sd_stochastic(
     int dis_S = std::round(total_leave * ((double) S / total_pop));
     int dis_I = total_leave - dis_S;
     
-    dis_S_out[t] = dis_S;
-    dis_I_out[t] = dis_I;
+    // update S, I after discharges
+    S -= dis_S;
+    I -= dis_I;
     
-    // --- Admissions (equal to discharges) ---
+    // --- 2. In-hospital infections ---
+    int inf_S   = rbinom_int(S, beta);              // transmission infections
+    int S_after_inf = S - inf_S;
+    int spont_S = rbinom_int(S_after_inf, r);       // spontaneous infections
+    int new_infections = inf_S + spont_S;
+    
+    // --- 3. Admissions (equal to discharges) ---
     int adm_S = rbinom_int(total_leave, 1.0 - p);
     int adm_I = total_leave - adm_S;
     
-    // --- In-hospital infections ---
-    int inf_S   = rbinom_int(S, beta);
-    int spont_S = rbinom_int(S, r);
+    // --- 4. Update totals ---
+    S = S - new_infections + adm_S;
+    I = I + new_infections + adm_I;
     
-    // --- Update compartments ---
-    S = S + adm_S - dis_S - inf_S - spont_S;
-    I = I + adm_I - dis_I + inf_S + spont_S;
-    
-    // --- Record ---
+    // --- 5. Record daily outputs ---
     days[t]        = t;
     S_out[t]       = S;
     I_out[t]       = I;
-    comm_cases[t]  = adm_I;            // community-acquired
-    hosp_cases[t]  = inf_S + spont_S;  // hospital-acquired
+    comm_cases[t]  = adm_I;             // community-acquired
+    hosp_cases[t]  = new_infections;    // hospital-acquired (transmission + spontaneous)
+    dis_S_out[t]   = dis_S;
+    dis_I_out[t]   = dis_I;
   }
   
   return DataFrame::create(
