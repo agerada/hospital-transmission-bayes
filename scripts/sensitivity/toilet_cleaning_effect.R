@@ -46,7 +46,7 @@ nl@experiment <- experiment(expname = "sens_analysis",
 nl@simdesign <- simdesign_distinct(nl,
                                    nseeds = sens_seeds)
 
-plan(list(sequential, multisession))
+plan(list(sequential, future_plan), workers = num_workers)
 
 if (run_sims) {
   sens_toilet_cleaning_effect <- progressr::with_progress(

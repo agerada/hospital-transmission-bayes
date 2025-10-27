@@ -61,7 +61,7 @@ nl@experiment <- experiment(expname = "posterior_predictive_sim",
 nl@simdesign <- simdesign_distinct(nl,
                               nseeds = 1)
 
-plan(list(sequential, multisession))
+plan(list(sequential, future_plan), workers = num_workers)
 
 if (run_sims) {
   posterior_predictive_sim <- progressr::with_progress(

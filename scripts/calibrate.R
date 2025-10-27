@@ -7,6 +7,17 @@ library(progressr)
 library(here)
 handlers("cli")
 options(progressr.enable=TRUE)
+source(here::here("scripts", "helpers", "simdesign_random_helpers.R"))
+
+# optionally, set jvm here:
+Sys.setenv(JAVA_HOME = "/usr/lib/jvm/java-1.17.0-openjdk-amd64/")
+
+# set parameter sampling functions
+simdesign_fn <- simdesign_random
+
+# set future plan (multicore or multisession) and workers
+future_plan <- "multisession"
+num_workers <- 4
 
 wards_total <- 9
 bedspaces_per_ward <- 9

@@ -1,4 +1,4 @@
-source("scripts/helpers/simdesign_random_helpers.R")
+source(here::here("scripts", "helpers", "simdesign_random_helpers.R"))
 
 sim_days <- (365 * 3) + 30
 # sim_hours <- sim_days * 24
@@ -6,7 +6,7 @@ sim_days <- (365 * 3) + 30
 nl <- nl(nlversion = nl_version,
          nlpath = netlogo_path,
          modelpath = model_path,
-         jvvmem = 1024)
+         jvmmem = 1024)
 
 nl@experiment <- experiment(expname = "baseline_rate",
                             outpath = out_path,
@@ -39,16 +39,16 @@ nl@experiment <- experiment(expname = "baseline_rate",
                                              "admission-days" = admission_days,
                                              "bay-proportion" = bay_proportion))
 
-nl@simdesign <- simdesign_random(nl,
+nl@simdesign <- simdesign_fn(nl,
                                  samples = calibration_samples,
                                  nseeds = calibration_seeds,
                                  precision = 3)
-# Note: simdesign_random draws independent random samples from the prior distributions
-# defined in nl@experiment@variables, unlike simdesign_lhs which uses Latin Hypercube Sampling.
+# Note: simdesign_fn draws independent random samples from the prior distributions
+# defined in nl@experiment@variables, unlike simdesign_fn which uses Latin Hypercube Sampling.
 # Seeds are generated using nlrx:::util_generate_seeds for reproducibility.
 # To control randomness, set a seed before calling this function.
 
-plan(list(sequential, multisession))
+plan(list(sequential, future_plan), workers = num_workers)
 
 if (run_sims) {
   results_baseline <- progressr::with_progress(
@@ -111,7 +111,7 @@ abc_params <- abc(target = pre_outbreak_data$rates,
                   sumstat = sumstats,
                   tol = abc_tol,
                   method="rejection")
-
+print(abc_params)
 # plot
 long_retained_ss <- abc_params$ss %>% 
   as_tibble %>% 
