@@ -1,5 +1,5 @@
 ---
-title: Gastro-intestinal transmission and colonisation of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings -- calibration of an agent-based model
+title: Gastro-intestinal transmission of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings -- calibration of an agent-based model
 authors:
   - name: Alessandro Gerada
     affiliation: University of Liverpool
@@ -41,6 +41,7 @@ acronyms:
   - shortname: SD
     longname: system dynamics
   insert_loa: false
+  insert_links: false
 ---
 
 # Background
@@ -82,10 +83,10 @@ Drug resistance further compounds the problem --- for example, \acr{CPE} bloodst
 \acr{CDI} is associated with prolonged hospital stay and increased healthcare costs, causing a significant operational burden [@forsterEffectHospitalacquiredInfection2012].
 Furthermore, the therapeutic antimicrobial options available for \acr{VRE}, \acr{ESBL}, and \acr{CPE} are limited, leading to increased use of \acr{WHO} reserve agents, which further exacerbates the problem of antimicrobial resistance [@organization2019WHOAWaRe2019].
 
-\acr[case=sentence]{IPC} measures are designed to prevent the spread of these pathogens within healthcare settings. Commonly used interventions include hand hygiene, environmental cleaning, and the isolation of infected/colonised patients [@worldhealthorganizationGlobalReportInfection2022].
+\acr[case=sentence]{IPC} measures are designed to prevent the spread of these pathogens within healthcare settings. Commonly used interventions include hand hygiene, environmental cleaning, and the isolation of infected patients [@worldhealthorganizationGlobalReportInfection2022].
 A key role of \acr{IPC} teams is to prepare for, declare, investigate, and control outbreaks of healthcare-associated infections.
 In practice, an outbreak is declared after rates of infection have been compared to historical rates, and this is followed by a series of interventions to control the outbreak.
-These interventions may include increased frequency and thoroughness of environmental cleaning, cohorting of infected/colonised patients (particularly into single-occupancy _en suite_ rooms), and increased hand hygiene compliance.
+These interventions may include increased frequency and thoroughness of environmental cleaning, cohorting of infected patients (particularly into single-occupancy _en suite_ rooms), and increased hand hygiene compliance.
 The impact of these interventions is often difficult to quantify.
 Although evidence suggests that the interventions can help control outbreaks, studies almost always report their findings after a suite of interventions have been implemented -- therefore, the relative importance of each intervention is not usually quantifiable.
 Furthermore, studies report findings from a population that may be very different from the outbreak population being managed -- differences can range from patient factors such as co-morbidities and rates of antimicrobial resistance, to institution practices such as rates of antimicrobial usage, and to structural differences such as hospital layout.
@@ -96,9 +97,9 @@ If the measures are successful in controlling the spread, then they are graduall
 If they are not, then further measures are implemented, or the existing measures are intensified, until control is achieved.
 A inherent limitation of this approach is that decisions are made based on observed data, and the impact of interventions cannot be quantified until after a change in the rate of infection has been observed, by which time further preventable nosocomial infections may have occurred.
 
-The use of computer simulation techniques such as \acr{ABM} can be used to model the spread of infectious diseases by constructing a virtual environment (such as a hospital), within which agents (such as patients and/or staff) interact. Agent-based modelling has been used to describe the transmission of \acr{MRSA} [@jaramilloAgentBasedModel2015] and \acr{SARS-CoV-2} [@kerrCovasimAgentbasedModel2021]. An advantage of \acr{ABM} over other simulation approaches is that models can be used to project the impact of interventions on transmission, prior to their implementation [@cassidyMathematicalModellingHealth2019]. This can be particularly useful for both planning and active management of outbreaks, where the impact of individual interventions is difficult to quantify [@cassidyMathematicalModellingHealth2019].
+The use of computer simulation techniques such as \acr{ABM} and can be used to model the spread of infectious diseases by constructing a virtual environment (such as a hospital), within which agents (such as patients and/or staff) interact. Agent-based modelling has been used to describe the transmission of \acr{MRSA} [@jaramilloAgentBasedModel2015] and \acr{SARS-CoV-2} [@kerrCovasimAgentbasedModel2021]. An advantage of \acr{ABM} over other simulation approaches is that models can be used to project the impact of interventions on transmission, prior to their implementation [@cassidyMathematicalModellingHealth2019]. This can be particularly useful for both planning and active management of outbreaks, where the impact of individual interventions is difficult to quantify [@cassidyMathematicalModellingHealth2019]. Another simulation approach is stochastic \acr{SD} modelling, which is a high-level approach that models the flow of patients between different states, such as susceptible and infected states, and is particularly useful for understanding feedback loops within systems.
 
-Here, we describe an agent-based model that models the transmission of faecal-oral-transmitted pathogens under antimicrobial selection pressure. Our aim was to explore the impact of various infection control strategies and interventions, particularly during outbreak periods. The parameters were specifically estimated using data from a \acr{CDI} outbreak reported by @salgadoAnalysisOutbreakClostridium2009, although our intention is that the approach is readily adaptable to other related antimicrobial-resistant pathogens such as \acr{VRE}, \acr{ESBL}, and \acr{CPE}.
+Here, we describe an simulation model that models the transmission of faecal-oral-transmitted pathogens under antimicrobial selection pressure. Our aim was to explore the impact of various infection control strategies and interventions, particularly during outbreak periods. The parameters were specifically estimated using data from a \acr{CDI} outbreak reported by @salgadoAnalysisOutbreakClostridium2009, although our intention is that the approach is readily adaptable to other related antimicrobial-resistant pathogens such as \acr{VRE}, \acr{ESBL}, and \acr{CPE}. We compare an \acr{ABM} and a stochastic \acr{SD} model, and explore the advantages and disadvantages of each approach.
 
 # Methods
 
@@ -132,9 +133,9 @@ where:
 
 -   $R_i(t)$ is the risk of patient $i$ acquiring infection at time $t$,
 
--   $r_0$ is the baseline/*de novo* risk of infection/colonisation,
+-   $r_0$ is the baseline/*de novo* risk of infection,
 
--   $m$ is the increased (or decreased) relative risk of infection/colonisation due to antimicrobial therapy,
+-   $m$ is the increased (or decreased) relative risk of infection due to antimicrobial therapy,
 
 -   $U_i(t)$ is the number of times patient $p$ frequents the toilet within the time interval $t$,
 
@@ -192,7 +193,7 @@ where:
 -   $S$ is the number of susceptible inpatients,
 -   $I$ is the number of infected inpatients,
 -   $A$ is the rate of new admissions,
--   $p$ is the community colonisation rate,
+-   $p$ is the community infection rate,
 -   $\beta$ is the transmission coefficient,
 -   $r$ is the rate of random (*de novo*) infection,
 -   $D$ is the rate of patient discharges.
@@ -201,7 +202,7 @@ The hospital capacity was constantly kept at 100% occupancy (i.e., patients were
 
 ```{r fig-sd-model, include=TRUE}
 #| echo: false
-#| fig.cap: "System dynamics model. $S$ and $I$ are the number of susceptible and infected patients, respectively; $A$ and $D$ are the rates of admitted and discharged patients, respectively; $p$ is the community colonisation rate; $\\beta$ is the transmission coefficient; and $r$ is the rate of random (*de novo*) infection."
+#| fig.cap: "System dynamics model. $S$ and $I$ are the number of susceptible and infected patients, respectively; $A$ and $D$ are the rates of admitted and discharged patients, respectively; $p$ is the community infection rate; $\\beta$ is the transmission coefficient; and $r$ is the rate of random (*de novo*) infection."
 knitr::include_graphics("./images/sd_model.svg")
 ```
 
@@ -215,13 +216,13 @@ where $D_{\text{total}, t}$ is the total number of patients (both susceptible, $
 Therefore, $D_{\text{total}, t} = D_{S,t} + D_{I,t}$, where:
 
 $$
-D_{S,t} = \Bigl \lfloor D_{\text{total}, t} \cdot \frac{S_t}{S_t + I_t} \Bigr \rceil,
+D_{S,t} = \left \lfloor D_{\text{total}, t} \cdot \frac{S_t}{S_t + I_t} \right \rceil,
 $$
 
 and
 
 $$
-D_{I,t} = \Bigl \lfloor D_{\text{total}, t} \cdot \frac{I_t}{S_t + I_t} \Bigr \rceil = D_{\text{total}, t} - D_{S,t},,
+D_{I,t} = \left \lfloor D_{\text{total}, t} \cdot \frac{I_t}{S_t + I_t} \right \rceil = D_{\text{total}, t} - D_{S,t},,
 $$
 
 where $\lfloor x \rceil$ is the rounding of $x$ to the nearest integer.
@@ -268,11 +269,11 @@ $$
 
 To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced \acr{IPC} measures. 
 
-A similar approach was used to generate outbreaks in the stochastic system dynamics model, with the difference that the parameters were changed at: 1) onset of outbreak; and 2) end of outbreak. The parameters that were changed were: 1) $\beta$ (transmission coefficient); and 2) $p$ (community colonisation rate). The parameter $r$ (rate of random infection) was kept constant throughout the simulation. 
+A similar approach was used to generate outbreaks in the stochastic system dynamics model, with the difference that the parameters were changed at: 1) onset of outbreak; and 2) end of outbreak. The parameters that were changed were: 1) $\beta$ (transmission coefficient); and 2) $p$ (community infection rate). The parameter $r$ (rate of random infection) was kept constant throughout the simulation. 
 
 ## Model inputs and outputs
 
-Model input parameters were broadly grouped into: 1) toilet (e.g., number of times toilet used per day, level of contamination after use or cleaning); 2) admission (e.g., community colonisation rate, antimicrobial prescription rate); and 3) colonisation parameters (e.g., relative risk increase of antimicrobial therapy on colonisation/infection).
+Model input parameters were broadly grouped into: 1) toilet (e.g., number of times toilet used per day, level of contamination after use or cleaning); 2) admission (e.g., community infection rate, antimicrobial prescription rate); and 3) infection parameters (e.g., relative risk increase of antimicrobial therapy on infection).
 
 The outputs of the model included: 1) number of patients admitted to the hospital; 2) number of patients with community-acquired infection; 3) number of patients with hospital-acquired (nosocomial) infection. The simulation was run with each unit of time corresponding to one day; therefore, the model's outputs were for each simulated day.
 
@@ -298,7 +299,7 @@ Rejection sampling \acr{ABC} was employed to fit the \acr{ABM} to the observed o
 | Baseline (pre-outbreak) antimicrobial prescription rate | Constant | 49.9% | Proportion of patients administered antimicrobials during admission | @versportenAntimicrobialConsumptionResistance2018 |
 | Admission duration | Poisson | $\lambda = 4.6  \text{ days}$ |  | @levitkryankelixhauserastrangesekassedccoffeyrHCUPFactsFigures2007 |
 | Proportion of toilets that are shared between \>1 patients | Constant | 60% | The remaining proportion (40%) of toilets were dedicated to one patient | N/A |
-| Community colonisation rate | Uniform | $a = 0.01, b = 0.1$ |  | @crobachUnderstandingClostridiumDifficile2018 |
+| Community infection rate | Uniform | $a = 0.01, b = 0.1$ |  | @crobachUnderstandingClostridiumDifficile2018 |
 | Antimicrobial effect | Uniform | $a = 1.31, b = 1.87$ | Odds ratio for effect of antimicrobial therapy on risk of hospital-acquired CDI | @slimingsAntibioticsHospitalacquiredClostridium2014 |
 | CDI incidence | Uniform | $a=2.8, b=12.1$ | Per 10,000 patient-days | @marraIncidenceOutcomesAssociated2020 |
 | Mean toilet frequenting rate | Uniform | $a=0.5,b=5$ | Per day; used as \lambda parameter for Poisson distribution |  |
@@ -324,7 +325,7 @@ where:
 
 Otherwise, $S_i$ was rejected. The parameter samples that generated the accepted simulations were used to produce a posterior distribution. $\epsilon$ was set such that the acceptance rate was approximately 2.5%, which was deemed to be a good compromise between the accuracy of the posterior distribution and the computational cost of running the simulations.
 
-A two-step approach to calibration was taken. Firstly, ABC was used to calibrate the model pre-outbreak data to identify posterior distributions for the parameters that recapitulated the baseline rate. Next, the posterior distribution of the baseline rate model was used as a prior for a model that extended the simulation into the period of CDI outbreak and implementation of enhanced IPC measures (October 2004--May 2005 in the observed dataset) [@salgadoAnalysisOutbreakClostridium2009]. To simulate the emergence of an outbreak, the model changed parameters at a discrete time point corresponding to the outbreak onset as described in @sec-outbreak-generation. The priors used for ABC were selected to be compatible with increased transmission or colonisation rates, for example increased antimicrobial exposure and decreased toilet cleaning frequency. To achieve this, latin hypercube sampling was repeated, and any parameters that did not satisfy these requirements (e.g., the parameter governing the antimicrobial prescription rate was _lower_ during the outbreak period) were discarded. At a subsequent discrete time point, the model again changed parameters to simulate enhanced infection control measures. The prior distributions for these parameters were selected to decrease transmission and colonisation -- generally the reverse of the 'outbreak' parameters. Again, only samples from the latin hypercube that satisfied these requirements were used.
+A two-step approach to calibration was taken. Firstly, ABC was used to calibrate the model pre-outbreak data to identify posterior distributions for the parameters that recapitulated the baseline rate. Next, the posterior distribution of the baseline rate model was used as a prior for a model that extended the simulation into the period of CDI outbreak and implementation of enhanced IPC measures (October 2004--May 2005 in the observed dataset) [@salgadoAnalysisOutbreakClostridium2009]. To simulate the emergence of an outbreak, the model changed parameters at a discrete time point corresponding to the outbreak onset as described in @sec-outbreak-generation. The priors used for ABC were selected to be compatible with increased transmission or infection rates, for example increased antimicrobial exposure and decreased toilet cleaning frequency. To achieve this, latin hypercube sampling was repeated, and any parameters that did not satisfy these requirements (e.g., the parameter governing the antimicrobial prescription rate was _lower_ during the outbreak period) were discarded. At a subsequent discrete time point, the model again changed parameters to simulate enhanced infection control measures. The prior distributions for these parameters were selected to decrease transmission and infection -- generally the reverse of the 'outbreak' parameters. Again, only samples from the latin hypercube that satisfied these requirements were used.
 
 As a posterior predictve check, the posterior parameter distributions were used to simulate `r length(unique(uniform_sims$siminputrow))` outbreak scenarios that were compared to the observed rates. To sample from the posterior distribution (i.e., the parameter sets retained after the rejection ABC algorithm) were samples with replacement were taken and used as an input to the stochastic \acr{SD} model.
 
@@ -340,7 +341,7 @@ for the posterior predictive checks, `r uniform_sims_n_seeds` seeds were used fo
 `r mean_sims_n_seeds` seeds were used for the mean of the posterior distribution, and
 `r posterior_predictive_n_seeds` seeds were used for the samples with replacement from the posterior distribution.
 
-### Calibration of the \acr[first_use=TRUE]{SD} model
+### Calibration of \acr[first_use=TRUE]{SD} model
 
 \acr[first_use=TRUE, case=sentence]{ABC} was also used to calibrate the stochastic \acr{SD} model to the observed outbreak data, although the calibration was performed in a single step that encompassed the entire period of the observed data (i.e., pre-outbreak, outbreak, and control periods). 
 
@@ -350,7 +351,7 @@ for the posterior predictive checks, `r uniform_sims_n_seeds` seeds were used fo
 sens_n_seeds <- length(unique(uniform_sims$siminputrow))
 ```
 
-To assess the sensitivity of the calibrated \acr{ABM} to changes in parameters, a single-parameter local sensitivity analysis was performed [@railsback232SensitivityAnalysis2019]. Four parameters that reflected modifiable infection control practices were chosen for the sensitivity analysis: 1) antimicrobial prescription rates; 2) the mean delay between patient infection and transfer to a side room; 3) toilet cleaning rate; and 4) toilet cleaning effect. To conduct the sensitivity analysis, all the parameters except the one of interest were fixed at the posterior mean values, determined using the rejection \acr{ABC} Next, the parameter of interest was varied through a range of values, and used as an input to the simulation model at each value. The output metric was the number of cases of hospital-acquired infection/colonisation within the outbreak period. For each parameter value, the simulation was run with `r sens_n_seeds` different random number generator seeds to account for stochasticity in the model -- the output metric was the mean number of cases across the `r sens_n_seeds` runs.
+To assess the sensitivity of the calibrated \acr{ABM} to changes in parameters, a single-parameter local sensitivity analysis was performed [@railsback232SensitivityAnalysis2019]. Four parameters that reflected modifiable infection control practices were chosen for the sensitivity analysis: 1) antimicrobial prescription rates; 2) the mean delay between patient infection and transfer to a side room; 3) toilet cleaning rate; and 4) toilet cleaning effect. To conduct the sensitivity analysis, all the parameters except the one of interest were fixed at the posterior mean values, determined using the rejection \acr{ABC} Next, the parameter of interest was varied through a range of values, and used as an input to the simulation model at each value. The output metric was the number of cases of hospital-acquired infection within the outbreak period. For each parameter value, the simulation was run with `r sens_n_seeds` different random number generator seeds to account for stochasticity in the model -- the output metric was the mean number of cases across the `r sens_n_seeds` runs.
 
 ## Software implementation
 
@@ -405,10 +406,10 @@ param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
                  "toilet-cleaning-rate" = "Toilet cleaning rate",
                  "toilet-contamination-effect" = "Toilet contamination effect",
                  "toilet-cleaning-effect" = "Toilet cleaning effect",
-                 "community-colonisation-rate" = "Community colonisation rate",
+                 "community-colonisation-rate" = "Community infection rate",
                  "antibiotic-prescription-rate" = "Antibiotic prescription rate",
                  "antibiotic-effect" = "Antibiotic effect",
-                 "random-colonisation" = "Random colonisation",
+                 "random-colonisation" = "Random infection",
                  "side-room-delay-mean" = "Side room delay mean")
 
 params_table %>% 
@@ -451,6 +452,7 @@ general_params <- abc_params_outbreak_control$unadj.values %>%
     .default = "Baseline")) %>%
   mutate(name = str_remove(name, "^o-|^c-")) %>%
   mutate(name = str_replace_all(name, "-", " ")) %>%
+  mutate(name = str_replace_all(name, "colonisation", "infection")) %>%
   mutate(name = str_to_title(name)) %>% 
   # change type to ordered factor
   mutate(type = factor(type, levels = c("Baseline", "Outbreak", "Control"))) %>%
@@ -646,7 +648,7 @@ posterior_predictive_sim_rates %>%
   guides(color="none")
 ```
 
-The sensitivity analysis explored the impact of different infection control practices on the number of cases observed during the outbreak period -- the results are shown in @fig-sensitivity-analysis. The analysis showed that the cleaning of toilets had a dramatic impact on the number of cases observed during the outbreak period, although the benefit appeared to plateau beyond a certain amount -- for example, cleaning toilets more than twice per day appeared to have marginal benefits. The number of hospital acquired cases did not appear to be sensitive to the antimicrobial prescription rate during the outbreak period. The cohorting of patients into single-occupancy rooms after colonisation/infection had an almost linear relationship with the number of cases. 
+The sensitivity analysis explored the impact of different infection control practices on the number of cases observed during the outbreak period -- the results are shown in @fig-sensitivity-analysis. The analysis showed that the cleaning of toilets had a dramatic impact on the number of cases observed during the outbreak period, although the benefit appeared to plateau beyond a certain amount -- for example, cleaning toilets more than twice per day appeared to have marginal benefits. The number of hospital acquired cases did not appear to be sensitive to the antimicrobial prescription rate during the outbreak period. The cohorting of patients into single-occupancy rooms after infection had an almost linear relationship with the number of cases. 
 
 ```{r fig-sensitivity-analysis, include=TRUE, eval=TRUE}
 #| echo: false
@@ -1075,22 +1077,17 @@ abc_sd$ss %>% as.matrix %>%
 
 ```
 
-```{r}
-# compare ABM community colonisation rate to SD model p
-mean_sims %>% 
-  summarise(mean = mean(`community-colonisation-rate`),
-            sd = sd(`community-colonisation-rate`))
-```
-
 # Discussion
+
+_The discussion needs to explore the different modelling approaches used (SD vs ABM) and why we eventually settled on the ABM as the main model. This is sort of captured in the results, but maybe it needs to be here as well?_
 
 \acr[case=sentence, first_use=true]{IPC} is the practice of preventing the spread of infectious diseases in healthcare settings [@worldhealthorganizationGuidelinesCoreComponents2016]. Central to this is the operational management of an outbreak, defined as an increase in the number of infected cases above the expected rate. This research describes the design and calibration of an agent-based model that simulates the spread of infection in a hospital setting. The primary motivation of this work is to assess the impact of different infection prevention interventions (such as change in practice) on rates of infection. The model was designed to simulate a paradigm of infections that are characterised by faecal-oral transmission, with the risk increasing in the presence of the selective pressure introduced by antimicrobial therapy. Since some of the pathogens that fit this definition are associated with long-term colonisation and risk of onward transmission of the gastro-intestinal tract (without the presence of clinical illness), it was assumed that infected patients remained colonised during their admission. The model can be used to simulate any infection with these characteristics, such as: \acr{CDI}, \acr{VRE}, \acr{ESBL}, and \acr{CPE}.
 
-The model was designed to simulate the spread of infection/colonisation at a baseline (or background) rate, followed by an outbreak period of increased transmission, in turn followed by a period of enhanced infection control to return back to the baseline rate. The model was calibrated to a report of a _C. difficile_ outbreak reported by @salgadoAnalysisOutbreakClostridium2009. Approximate Bayesian computation was used to calibrate the model to the rates of infection reported in the paper. When model inputs were drawn from the posterior distributions, the model was able to simulate plausible outbreak scenarios that were similar to the observed rates. A sensitivity analysis was performed over parameters that represent infection control interventions (such as the frequency of toilet cleaning), demonstrating the possible applications of this model for informing operational infection control practices. Interventions that controlled the spread of infection, such as the cohorting of patients to single-occupancy beds, and the increased frequency of toilet cleaning, led to a reduced number of cases during the outbreak period.
+The model was designed to simulate the spread of infection at a baseline (or background) rate, followed by an outbreak period of increased transmission, in turn followed by a period of enhanced infection control to return back to the baseline rate. The model was calibrated to a report of a _C. difficile_ outbreak reported by @salgadoAnalysisOutbreakClostridium2009. Approximate Bayesian computation was used to calibrate the model to the rates of infection reported in the paper. When model inputs were drawn from the posterior distributions, the model was able to simulate plausible outbreak scenarios that were similar to the observed rates. A sensitivity analysis was performed over parameters that represent infection control interventions (such as the frequency of toilet cleaning), demonstrating the possible applications of this model for informing operational infection control practices. Interventions that controlled the spread of infection, such as the cohorting of patients to single-occupancy beds, and the increased frequency of toilet cleaning, led to a reduced number of cases during the outbreak period.
 
-To simulate outbreaks and periods of enhanced infection control, the model was designed to change parameters at discrete time points. For example, the rate of antimicrobial prescriptions was higher during the outbreak period, promoting the spread of infection and colonisation. Later, the prescription rate was reduced to help control the outbreak. The NetLogo model implementation was designed so that a fixed parameter set was used as an input, and the outbreak and enhanced IPC parameters were only used during their respective periods. In effect, all input parameters were provided as a fixed input -- some parameters were only used by the simulation at defined discrete intervals. This approach may be unsuitable for modelling of transmission without a clear outbreak pattern -- more complex implementations of time-varying parameters could be explored.
+To simulate outbreaks and periods of enhanced infection control, the model was designed to change parameters at discrete time points. For example, the rate of antimicrobial prescriptions was higher during the outbreak period, promoting the spread of infection. Later, the prescription rate was reduced to help control the outbreak. The NetLogo model implementation was designed so that a fixed parameter set was used as an input, and the outbreak and enhanced IPC parameters were only used during their respective periods. In effect, all input parameters were provided as a fixed input -- some parameters were only used by the simulation at defined discrete intervals. This approach may be unsuitable for modelling of transmission without a clear outbreak pattern -- more complex implementations of time-varying parameters could be explored.
 
-Although agent-based models have been shown to be useful for simulating and modelling infectious disease transmission, they have limitations. The model described here is a simplification of what is likely to be a highly intricate and complicated system. For example, transmission was assumed to be 'random' or acquired through the use of a contaminated toilet. In reality, other transmission pathways likely exist, such as through contact with staff or contaminated bedding. Antimicrobial exposure was considered to be a binary risk factor for an agent becoming infected or colonised. Antimicrobial class and duration of exposure are factors that are not accounted for in this model. An agent-based model that captures all the details that influence the spread of infection in a hospital setting is unlikely to be feasible, due to the computational challenge and the large number of parameters that would need to be estimated. A reasonable approach is for the model to be as simple as possible, while still capturing the features required to answer the research question [@sunSimpleComplicatedAgentbased2016]. Another limitation of agent-based models is the requirement for detailed data to calibrate and validate the model. Here, the data used was primarily from a retrospective descriptive dataset. As such, information on certain parameters was not available (e.g., the proportion of patients that were administered an antimicrobial during their admission) -- these parameters were estimated from the literature. An important future direction would be to prospectively inform and validate the model with data collected specifically for this purpose.
+Although agent-based models have been shown to be useful for simulating and modelling infectious disease transmission, they have limitations. The model described here is a simplification of what is likely to be a highly intricate and complicated system. For example, transmission was assumed to be 'random' or acquired through the use of a contaminated toilet. In reality, other transmission pathways likely exist, such as through contact with staff or contaminated bedding. Antimicrobial exposure was considered to be a binary risk factor for an agent becoming infected. Antimicrobial class and duration of exposure are factors that are not accounted for in this model. An agent-based model that captures all the details that influence the spread of infection in a hospital setting is unlikely to be feasible, due to the computational challenge and the large number of parameters that would need to be estimated. A reasonable approach is for the model to be as simple as possible, while still capturing the features required to answer the research question [@sunSimpleComplicatedAgentbased2016]. Another limitation of agent-based models is the requirement for detailed data to calibrate and validate the model. Here, the data used was primarily from a retrospective descriptive dataset. As such, information on certain parameters was not available (e.g., the proportion of patients that were administered an antimicrobial during their admission) -- these parameters were estimated from the literature. An important future direction would be to prospectively inform and validate the model with data collected specifically for this purpose.
 
 Agent-based models that simulate the hospital transmission of pathogens transmitted through the faecal-oral route, including _C. difficile_ and vancomycin-resistant _Enterococci_, have been reported previously [@codellaAgentbasedSimulationModel2015; @debosckerAgentbasedModelSimulate2021]. Some models have also explored the impact of one or more infection control interventions on the spread of infection [@barkerInterventionsReduceIncidence2018; @rubinSimulationBasedAssessmentStrategies2013]. Our model builds on these works by designing and calibrating the model to an outbreak and enhanced \acr{IPC} period. The motivation for this was to design a model that can be used to support infection and prevention teams in the following: 1) preparedness for outbreak situations; and 2) decision-making on the implementation of infection control interventions during an outbreak. Furthermore, the model was designed to be pathogen-agnostic to allow for a stepwise approach for future work -- pathogen-specific features (e.g., diagnostic and laboratory testing) can be added as required. The choice of NetLogo as a platform allows for the model to be used interactively by non-programmers, such as infection control practitioners; the model can also be modified and extended with the relatively simple NetLogo language.
 
