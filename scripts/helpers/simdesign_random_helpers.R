@@ -16,10 +16,17 @@ util_create_random <- function(input, samples, precision) {
     spec <- input[[i]]
     qfun <- spec[["qfun"]]
     if (is.null(qfun)) qfun <- "qunif"
+    fun <- match.fun(qfun)
     args <- spec
     args[["qfun"]] <- NULL
+    # Keep only arguments accepted by the chosen quantile function.
+    # If the function supports '...', keep all; otherwise, filter.
+    formal_names <- tryCatch(names(formals(fun)), error = function(e) NULL)
+    if (!is.null(formal_names) && !("..." %in% formal_names)) {
+      args <- args[names(args) %in% formal_names]
+    }
     probs <- stats::runif(samples)
-    do.call(match.fun(qfun), c(list(p = probs), args))
+    do.call(fun, c(list(p = probs), args))
   })
   names(rnd.design) <- names(input)
   rnd.final <- tibble::as_tibble(rnd.design)
