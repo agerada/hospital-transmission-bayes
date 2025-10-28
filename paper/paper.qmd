@@ -74,7 +74,7 @@ source(file.path("..", "scripts", "calibrate.R"), chdir = TRUE)
 
 ```{r load-pre-processed-data, include=FALSE}
 # Alternatively, just load previously dumped .RData from a run of calibrate.R
-load(file.path("..", "out", "calibrate.RData"))
+load(file.path("..", "out_random", "calibrate.RData"))
 ```
 
 The transmission of pathogenic bacteria in hospitals results in excessive morbidity and mortality.
