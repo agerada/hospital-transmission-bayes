@@ -111,7 +111,7 @@ abc_params <- abc(target = pre_outbreak_data$rates,
                   sumstat = sumstats,
                   tol = abc_tol,
                   method="rejection")
-print(abc_params)
+
 # plot
 long_retained_ss <- abc_params$ss %>% 
   as_tibble %>% 
