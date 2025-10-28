@@ -18,7 +18,12 @@ model_path <- here::here("models", "hospital_transmission.nlogo")
 out_path <- here::here("out")
 data_path <- here::here("data")
 
-run_sims <- FALSE
+if (!exists("run_sims")) {
+  run_sims <- FALSE
+}
+
+# to force running sims, set run_sims <- TRUE here
+run_sims <- TRUE
 
 antibiotic_prescription_rate = 0.499 # Vesporten 2018
 admission_days <- 4.6
