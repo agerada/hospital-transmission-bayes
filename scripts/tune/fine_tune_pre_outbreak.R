@@ -1,3 +1,5 @@
+source(here::here("scripts", "helpers", "simdesign_random_helpers.R"))
+
 sim_days <- (365 * 3) + 30
 
 nl <- nl(nlversion = nl_version,
@@ -40,12 +42,12 @@ nl@experiment <- experiment(expname = "fine_tune",
                                              "admission-days" = admission_days,
                                              "bay-proportion" = bay_proportion))
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = calibration_samples,
-                              nseeds = calibration_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_fn(nl,
+                                 samples = calibration_samples,
+                                 nseeds = calibration_seeds,
+                                 precision = 3)
 
-plan(list(sequential, multisession))
+plan(list(sequential, future_plan), workers = num_workers)
 
 if (run_sims) {
   results_baseline_fine_tune <- progressr::with_progress(

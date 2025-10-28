@@ -36,18 +36,17 @@ nl@experiment <- experiment(expname = "sens_analysis",
                                         "current-inpatients",
                                         "current-colonised"),
                             constants = c(consts, estimated_consts_mean), 
-                            variables = list("c-toilet-cleaning-rate" = list(min=0.25,
-                                                                             max=4,
-                                                                             qfun='qunif')
+                            variables = list(
+                              "c-toilet-cleaning-rate" = list(
+                                values = seq(from = 0.25, to = 4, length.out = sens_samples)
+                              )
                             )
 )
 
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = sens_samples,
-                              nseeds = sens_seeds,
-                              precision = 3)
+nl@simdesign <- simdesign_distinct(nl,
+                                   nseeds = sens_seeds)
 
-plan(list(sequential, multisession))
+plan(list(sequential, future_plan), workers = num_workers)
 
 if (run_sims) {
   sens_toilet_cleaning_rate <- progressr::with_progress(

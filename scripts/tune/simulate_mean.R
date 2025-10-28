@@ -40,7 +40,7 @@ nl@experiment <- experiment(expname = "mean_sims",
 nl@simdesign <- simdesign_simple(nl,
                               nseeds = calibration_seeds)
 
-plan(multisession)
+plan(future_plan, workers = num_workers)
 
 if (run_sims) {
   mean_sims <- progressr::with_progress(

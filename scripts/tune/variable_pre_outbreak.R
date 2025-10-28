@@ -1,3 +1,5 @@
+source(here::here("scripts", "helpers", "simdesign_random_helpers.R"))
+
 sim_days <- (365 * 7) + 30
 
 # outbreak_control_model <- "salgado.nlogo"
@@ -108,11 +110,11 @@ nl@experiment <- experiment(expname = "outbreak_control",
                                         "current-colonised"),
                             variables = outbreak_variables,
                             constants = consts)
-
-nl@simdesign <- simdesign_lhs(nl,
-                              samples = calibration_samples * 4,
-                              nseeds = calibration_seeds,
-                              precision = 3)
+print(outbreak_variables)
+nl@simdesign <- simdesign_fn(nl,
+                                 samples = calibration_samples * 4,
+                                 nseeds = calibration_seeds,
+                                 precision = 3)
 
 # keep simulated parameters that fit with outbreak generation
 nl@simdesign@siminput <- nl@simdesign@siminput %>%
@@ -121,7 +123,7 @@ nl@simdesign@siminput <- nl@simdesign@siminput %>%
                   `o-community-colonisation-rate` >= `community-colonisation-rate`) %>% 
   sample_n(calibration_samples)
 
-plan(list(sequential, multisession))
+plan(list(sequential, future_plan), workers = num_workers)
 
 if (run_sims) {
   results_outbreak_control_pre_included <- progressr::with_progress(
