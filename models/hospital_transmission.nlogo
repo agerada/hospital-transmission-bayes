@@ -148,12 +148,22 @@ to print-hospital-design
   let max-bays max bays-per-ward
   let median-bays median-of bays-per-ward
 
+  ;; compute patient capacity per ward (bay = 4, side room = 1)
+  let capacities-per-ward map [ w ->
+    sum map [ x -> ifelse-value (item 2 x) [ 4 ] [ 1 ] ]
+        ( filter [ x -> item 0 x = w ] ward-outline )
+  ] wards
+  let min-capacity min capacities-per-ward
+  let max-capacity max capacities-per-ward
+  let median-capacity median-of capacities-per-ward
+
   show (word "Hospital design summary:")
   show (word "  Wards: " num-wards)
   show (word "  Patient capacity: " patient-capacity)
   show (word "  Bays: " num-bays)
   show (word "  Side rooms: " num-side-rooms)
   show (word "  Bays per ward (min/median/max): " min-bays "/" median-bays "/" max-bays)
+  show (word "  Capacity per ward (min/median/max): " min-capacity "/" median-capacity "/" max-capacity)
 end
 
 to-report median-of [ lst ]
@@ -823,7 +833,7 @@ bedspaces-per-ward
 bedspaces-per-ward
 0
 20
-16.0
+18.0
 1
 1
 NIL
@@ -863,8 +873,8 @@ bay-proportion
 bay-proportion
 0
 1
-0.2
-0.1
+0.13
+0.01
 1
 NIL
 HORIZONTAL
@@ -908,7 +918,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-1.239
+1.4
 0.1
 1
 NIL
