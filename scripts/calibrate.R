@@ -16,37 +16,45 @@ Sys.setenv(JAVA_HOME = "/usr/lib/jvm/java-1.17.0-openjdk-amd64/")
 simdesign_fn <- simdesign_random
 
 # set future plan (multicore or multisession) and workers
-future_plan <- "multisession"
-num_workers <- 4
+future_plan <- "multicore"
+num_workers <- availableCores() - 1
 
-wards_total <- 9
-bedspaces_per_ward <- 9
+# set ward design
+wards_total <- 24
+bedspaces_per_ward <- 18
+
+# set random seed for reproducibility
 set.seed(42)
 
-netlogo_path <- "/Applications/NetLogo 6.2.2/"
+
+netlogo_path <- "~/netlogo_6.2.2"
 nl_version <- "6.2.2"
 model_path <- here::here("models", "hospital_transmission.nlogo")
 out_path <- here::here("out")
 data_path <- here::here("data")
 
-if (!exists("run_sims")) {
-  run_sims <- FALSE
-}
-
-# to force running sims, set run_sims <- TRUE here
+# previous versions of this script used this option to skip running the
+# simulations themselves, and load previously saved results instead into
+# R objects. Now, the script saves everything to a single .RData file at the end,
+# so this option is less useful, but is retained for backwards compatibility.
 run_sims <- TRUE
 
 antibiotic_prescription_rate = 0.499 # Vesporten 2018
 admission_days <- 4.6
-bay_proportion <- 0.6
-
-##============== pre-outbreak =============##
+bay_proportion <- 0.13
 
 if (!dir.exists(out_path)) {
   dir.create(out_path)
 }
 
-calibration_samples <- availableCores() * 8
+## Finally, adjust the number of samples and seeds for each calibration below.
+## Either set to a fixed number, or use availableCores() * n to scale with the
+## number of available CPU cores.
+
+##============== pre-outbreak =============##
+
+calibration_samples <- 800 
+# calibration_samples <- availableCores() * 8
 calibration_seeds <- 3
 abc_tol <- 0.05
 
@@ -80,7 +88,8 @@ source(here::here("scripts", "tune", "pre_outbreak.R"))
 
 ##=========== use variables for pre-outbreak params as well ============##
 
-calibration_samples <- availableCores() * 10
+calibration_samples <- 1000 
+# calibration_samples <- availableCores() * 10
 calibration_seeds <- 3
 abc_tol <- 0.025
 
@@ -100,28 +109,36 @@ source(here::here("scripts", "tune", "variable_pre_outbreak.R"))
 # This draws parameters from the posterior means +/- SD
 # These parameter sets are used as inputs to outbreak model
 
-calibration_samples <- availableCores() * 1
+calibration_samples <- 100 
+# calibration_samples <- availableCores() * 1
 calibration_seeds <- 10
 source(here::here("scripts", "tune", "simulate_uniform.R"))
 
+## If you want to change the hospital size for the posterior predictive checks and sensitivity
+## analyses, adjust the parameters here:
+# wards_total <- 24
+# bedspaces_per_ward <- 18
 
 ###========== single outbreak only simulation =========###
 # This uses the posterior means as inputs to a single outbreak
 
-calibration_seeds <- availableCores() * 1
+calibration_seeds <- 100 
+# calibration_seeds <-availableCores() * 1
 source(here::here("scripts", "tune", "simulate_mean.R"))
 
 # save.image(file.path(out_path, "calibrate.RData"))
 
 ##================= posterior predictive checks ==================##
 
-calibration_samples <- availableCores() * 1
+calibration_samples <- 100 
+# calibration_samples <- availableCores() * 1
 source(here::here("scripts", "tune", "posterior_predictive_checks.R"))
 
 ##================= sensitivity analysis ==================##
 
-sens_samples <- availableCores() * 1
-sens_seeds <- 10
+sens_samples <- 100
+# sens_samples <- availableCores() * 1
+sens_seeds <- 10 
 source(here::here("scripts", "sensitivity", "abx_prescription_rates.R"))
 
 #####============= sens proportion redistributed
