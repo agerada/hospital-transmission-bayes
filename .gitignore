@@ -4,6 +4,7 @@ out/
 *tmp.nlogo
 paper/**/*.pdf
 paper/**/*.docx
+slurm_out/
 
 # History files
 .Rhistory
