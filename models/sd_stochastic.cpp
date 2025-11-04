@@ -10,20 +10,23 @@ inline int rbinom_int(int n, double p) {
 
 // [[Rcpp::export]]
 DataFrame sd_stochastic(
-    int init_population,
-    int A,                  // mean discharges per day
-    double r,               // spontaneous colonisation rate
-    double baseline_beta,
-    double baseline_p,
-    double outbreak_beta,
-    double outbreak_p,
-    int outbreak_start,
-    int outbreak_end,
-    int n_days
+  int init_population,
+  int A,                  // mean discharges per day
+  double r,               // spontaneous colonisation rate (constant across phases)
+  double baseline_beta,
+  double baseline_lambda,
+  double outbreak_beta,
+  double outbreak_lambda,
+  double control_beta,
+  int outbreak_start,
+  int control_start,
+  int outbreak_end,
+  int control_end,
+  int n_days
 ) {
   // initial state
-  int S = std::round(init_population * (1.0 - baseline_p));
-  int I = std::round(init_population * baseline_p);
+  int S = std::round(init_population * (1.0 - baseline_lambda));
+  int I = std::round(init_population * baseline_lambda);
   
   // output storage
   IntegerVector days(n_days + 1);
@@ -45,14 +48,22 @@ DataFrame sd_stochastic(
   
   // simulation loop
   for (int t = 1; t <= n_days; ++t) {
-    // choose parameter regime
-    double beta, p;
+    // choose parameter regime using four time points
+    // beta varies across baseline/outbreak/control; p only varies across baseline/outbreak (not affected by control)
+    double beta, lambda;
+    // community colonisation rate (lambda): only changes during outbreak window
     if (t > outbreak_start && t < outbreak_end) {
+      lambda = outbreak_lambda;
+    } else {
+      lambda = baseline_lambda;
+    }
+    // transmission coefficient (beta): changes during outbreak and control windows
+    if (t > control_start && t < control_end) {
+      beta = control_beta;
+    } else if (t > outbreak_start && t < outbreak_end) {
       beta = outbreak_beta;
-      p    = outbreak_p;
     } else {
       beta = baseline_beta;
-      p    = baseline_p;
     }
     
     // --- 1. Discharges ---
@@ -74,8 +85,8 @@ DataFrame sd_stochastic(
     int new_infections = inf_S + spont_S;
     
     // --- 3. Admissions (equal to discharges) ---
-    int adm_S = rbinom_int(total_leave, 1.0 - p);
-    int adm_I = total_leave - adm_S;
+  int adm_S = rbinom_int(total_leave, 1.0 - lambda);
+  int adm_I = total_leave - adm_S;
     
     // --- 4. Update totals ---
     S = S - new_infections + adm_S;
