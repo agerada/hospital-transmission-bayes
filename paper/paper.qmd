@@ -99,7 +99,7 @@ A inherent limitation of this approach is that decisions are made based on obser
 
 The use of computer simulation techniques such as \acr{ABM} and can be used to model the spread of infectious diseases by constructing a virtual environment (such as a hospital), within which agents (such as patients and/or staff) interact. Agent-based modelling has been used to describe the transmission of \acr{MRSA} [@jaramilloAgentBasedModel2015] and \acr{SARS-CoV-2} [@kerrCovasimAgentbasedModel2021]. An advantage of \acr{ABM} over other simulation approaches is that models can be used to project the impact of interventions on transmission, prior to their implementation [@cassidyMathematicalModellingHealth2019]. This can be particularly useful for both planning and active management of outbreaks, where the impact of individual interventions is difficult to quantify [@cassidyMathematicalModellingHealth2019]. Another simulation approach is stochastic \acr{SD} modelling, which is a high-level approach that models the flow of patients between different states, such as susceptible and infected states, and is particularly useful for understanding feedback loops within systems.
 
-Here, we describe an simulation model that models the transmission of faecal-oral-transmitted pathogens under antimicrobial selection pressure. Our aim was to explore the impact of various infection control strategies and interventions, particularly during outbreak periods. The parameters were specifically estimated using data from a \acr{CDI} outbreak reported by @salgadoAnalysisOutbreakClostridium2009, although our intention is that the approach is readily adaptable to other related antimicrobial-resistant pathogens such as \acr{VRE}, \acr{ESBL}, and \acr{CPE}. We compare an \acr{ABM} and a stochastic \acr{SD} model, and explore the advantages and disadvantages of each approach for this application.
+Here, we describe an simulation model that models the transmission of faecal-oral-transmitted pathogens under antimicrobial selection pressure. Our aim was to explore the impact of various infection control strategies and interventions, particularly during outbreak periods. The parameters were specifically estimated using data from a \acr{CDI} outbreak reported by @salgadoAnalysisOutbreakClostridium2009, although our intention is that the approach is readily adaptable to other related antimicrobial-resistant pathogens such as \acr{VRE}, \acr{ESBL}, and \acr{CPE}.
 
 # Methods
 
@@ -183,102 +183,9 @@ Infected patients were moved to single-occupancy rooms (side rooms) after infect
 
 Each patient's admission duration was sampled from a Poisson distribution with a configurable mean (in days). Upon discharge, patients were removed from the simulation; each patient was then replaced with new patient admission. Although real hospitals do not operate at 100% occupancy at all times, this assumption was made to simplify the model.
 
-## Stochastic system dynamics model
-
-To build a high-level stochastic system dynamics model, the model was first described in terms of the following differential equations (see @fig-sd-model), an adaptation of *SI* (susceptible--infection) models [@andersonDiscussionKermackMcKendrickEpidemic1991; @keelingModelingInfectiousDiseases2011]:
-
-$$
-\frac{dS}{dt} = (1-\lambda)A - D \cdot \frac{S}{S + I} - S (\beta + r)
-$$
-
-$$
-\frac{dI}{dt} = \lambda A - D \cdot \frac{I}{S + I} + S (\beta + r)
-$$
-
-where:
-
--   $S$ is the number of susceptible inpatients,
--   $I$ is the number of infected inpatients,
--   $dS/dt$ and $dI/dt$ are the rates of change of susceptible/non-infected and infected inpatients, respectively,
--   $A$ is the number of new admissions,
--   $D$ is the number of patient discharges,
--   $\lambda$ is the community infection rate,
--   $\beta$ is the transmission coefficient,
--   $r$ is the rate of random (*de novo*) infection.
-
-The hospital capacity was constantly kept at 100% occupancy (i.e., patients were immediately replaced on discharge), therefore, $d = a$.
-
-```{r fig-sd-model, include=TRUE}
-#| echo: false
-#| fig.cap: "System dynamics model. $S$ and $I$ are the number of susceptible and infected patients, respectively; $A$ and $D$ are the rates of admitted and discharged patients, respectively; $\\lambda$ is the community infection rate; $\\beta$ is the transmission coefficient; and $r$ is the rate of random (*de novo*) infection."
-knitr::include_graphics("./images/sd_model.svg")
-```
-
-Next, the number of susceptible and infected patients at each discrete time $t + 1$ was calculated by first determining the number of patients discharged:
-
-$$
-D_{\text{total}, t} \sim \text{Poisson}(d),
-$$
-
-where $d$ is the discharge rate and $D_{\text{total}, t}$ is the total number of patients (both susceptible, $D_S$, and infected $D_I$), discharged at time $t$.
-
-Therefore, $D_{\text{total}, t} = D_{S,t} + D_{I,t}$, where:
-
-$$
-D_{S,t} = \left \lfloor D_{\text{total}, t} \cdot \frac{S_t}{S_t + I_t} \right \rceil,
-$$
-
-and
-
-$$
-D_{I,t} = \left \lfloor D_{\text{total}, t} \cdot \frac{I_t}{S_t + I_t} \right \rceil = D_{\text{total}, t} - D_{S,t},,
-$$
-
-where $\lfloor x \rceil$ is the rounding of $x$ to the nearest integer.
-
-Next, new admissions were calculated. Since $A_{\text{total}, t} = D_{\text{total}, t}$,
-
-$$
-A_{I,t} \sim \text{Binomial}(A_{\text{total}, t}, \lambda),
-$$
-
-and
-
-$$
-A_{S,t} = A_{\text{total}, t} - A_{I,t},
-$$
-
-To calculate the number of hospital-acquired infections (i.e., $\beta S_t + r S_t$), the binomial distribution was used:
-
-$$
-\text{HAI}_{\text{transmission}, t} \sim \text{Binomial}(S_t - D_{S, t}, \beta),
-$$
-
-and
-
-$$
-\text{HAI}_{\text{de novo}, t} \sim \text{Binomial}(S_t - D_{S, t} - \text{HAI}_{\text{transmission}, t}, r),
-$$
-
-where $\text{HAI}_{\text{transmission}, t}$ is the number of hospital-acquired infections due to transmission at time $t$, and $\text{HAI}_{\text{de novo}, t}$ is the number of hospital-acquired infections due to *de novo* infection at time $t$.
-
-Finally, the number of susceptible and infected patients at time $t + 1$ was updated as:
-
-$$
-S_{t+1} = S_t + A_{S,t} - D_{S,t} - \text{HAI}_{\text{transmission}, t} - \text{HAI}_{\text{de novo}, t},
-$$
-
-and
-
-$$
-I_{t+1} = I_t + A_{I,t} - D_{I,t} + \text{HAI}_{\text{transmission}, t} + \text{HAI}_{\text{de novo}, t}.
-$$
-
 ## Outbreak generation {#sec-outbreak-generation}
 
-To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced \acr{IPC} measures. 
-
-A similar approach was used to generate outbreaks in the stochastic system dynamics model. To align with the agent-based model, parameters were changed at four discrete time points: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced \acr{IPC} measures. Three parameter regimes were used: baseline (pre- and post-outbreak), outbreak (pre-control), and control (during enhanced IPC). During the control period only the transmission coefficient $\\beta$ changed; the community infection rate $\\lambda$ was unaffected by control measures (it only differed between baseline and outbreak). The parameter $r$ (rate of random infection) was kept constant throughout the simulation.
+To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the agent-based model optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced \acr{IPC} measures. By changing parameters, the model simulated the conditions that led to increased transmission of infection, followed by \acr{IPC} measures that reduced transmission.
 
 ```{r fig-screenshot, include=FALSE}
 #| echo: false
@@ -292,8 +199,6 @@ knitr::include_graphics("./images/screenshot.png")
 Data from a hospital \acr{CDI} outbreak reported by Salgado et al was used to parameterise and calibrate the model [@salgadoAnalysisOutbreakClostridium2009]. Raw data from this study were not available, therefore, the Engauge digitizer software was used to extract observed CDI rates from the manuscript's figures [@mitchellEngaugeDigitizer2020].
 
 ## Model calibration {#sec-model-calibration}
-
-### Calibration of \acr[first_use=TRUE]{ABM}
 
 Rejection sampling \acr{ABC} was employed to fit the \acr{ABM} to the observed outbreak data [@sunnakerApproximateBayesianComputation2013]. Model input parameters were broadly grouped into: 1) toilet (e.g., number of times toilet used per day, level of contamination after use or cleaning); 2) admission (e.g., community infection rate, antimicrobial prescription rate); and 3) infection parameters (e.g., relative risk increase of antimicrobial therapy on infection).
 
@@ -329,11 +234,11 @@ where:
 
 -   $\epsilon$ is the tolerance.
 
-Otherwise, $\theta_i$ was rejected. The parameter samples that generated the accepted simulations were used to approximate a posterior distribution. $\epsilon$ was set such that the acceptance rate was approximately 2.5%, which was deemed to be a good compromise between the accuracy of the posterior distribution and the computational cost of running the simulations.
+Otherwise, $\theta_i$ was rejected, giving a set of accepted parameters $\hat{\theta}_1, \ldots, \hat{\theta}_m$, where $m \leq n$. The parameter samples---i.e., $\hat{\theta}$ that generated the accepted simulations were used to approximate a posterior distribution. $\epsilon$ was set such that the acceptance rate was approximately 2.5%, which was deemed to be a good compromise between the accuracy of the posterior distribution and the computational cost of running the simulations.
 
 A two-step approach to calibration was taken. Firstly, ABC was used to calibrate the model pre-outbreak data to identify posterior distributions for the parameters that recapitulated the baseline rate. Next, the posterior distribution of the baseline rate model was used as a prior for a model that extended the simulation into the period of CDI outbreak and implementation of enhanced IPC measures (October 2004--May 2005 in the observed dataset) [@salgadoAnalysisOutbreakClostridium2009]. To simulate the emergence of an outbreak, the model changed parameters at a discrete time point corresponding to the outbreak onset as described in @sec-outbreak-generation. The priors used for ABC to calibrate the parameters during the outbreak period were selected to be compatible with increased transmission or infection rates, for example increased antimicrobial exposure and decreased toilet cleaning frequency, when compared to the pre-outbreak period. To achieve this, the posterior distribution of the pre-outbreak calibration was used to inform the outbreak priors. For example, the lower bound of the antimicrobial prescription rate parameter outbreak prior was set to the mean of the pre-outbreak posterior. At a subsequent discrete time point, the model again changed parameters to simulate enhanced infection control measures. The prior distributions for these parameters were selected to decrease transmission and infection -- generally the reverse of the 'outbreak' parameters.
 
-As a posterior predictve check, the posterior parameter distributions were used to simulate `r length(unique(uniform_sims$siminputrow))` outbreak scenarios that were compared to the observed rates. To sample from the posterior distribution (i.e., the parameter sets retained after the rejection ABC algorithm) were samples with replacement were taken and used as an input to the stochastic \acr{SD} model.
+As a posterior predictive check, the posterior parameter distributions were used to simulate `r length(unique(uniform_sims$siminputrow))` outbreak scenarios that were compared to the observed rates. A set of parameters was generated by sampling with replacement from $\hat{\theta}$, and used as an input to the simulation model. The results of these simulations were compared to the observed data to assess how well the calibrated model could reproduce the observed outbreak dynamics.
 
 ```{r text-seeds, include=FALSE}
 results_outbreak_control_n_seeds <- length(unique(results_outbreak_control_pre_included$`random-seed`))
@@ -346,10 +251,6 @@ Due to the inherent stochasticity within the agent-based model, all calibration 
 for the posterior predictive checks, `r uniform_sims_n_seeds` seeds were used for the uniform distribution,
 `r mean_sims_n_seeds` seeds were used for the mean of the posterior distribution, and
 `r posterior_predictive_n_seeds` seeds were used for the samples with replacement from the posterior distribution.
-
-### Calibration of \acr[first_use=TRUE]{SD} model
-
-A similar calibration approach using \acr{ABC} was also used to calibrate the stochastic \acr{SD} model to the observed outbreak data, although the calibration was performed in a single step that encompassed the entire period of the observed data (i.e., pre-outbreak, outbreak, and control periods).
 
 ## Sensitivity analysis {#sec-sens-analysis}
 
@@ -375,8 +276,6 @@ b_toilet_clean_rate <- round(mean(posteriors[, "toilet-cleaning-rate"]), 2)
 o_toilet_clean_rate <- round(mean(posteriors[, "o-toilet-cleaning-rate"]), 2)
 c_toilet_clean_rate <- round(mean(posteriors[, "c-toilet-cleaning-rate"]), 2)
 ```
-
-Both the \acr{ABM} and the \acr{SD} model were able to simulate the faecal-oral transmission of infection in a hospital setting. Although the \acr{SD} was computationally simpler, and produced simulated infection rates that were very similar to the observed rates (see @fig-posterior-predictive-check), the \acr{ABM} was based on a simulation that more closely resembled the workings of a real hospital. Importantly, the parameters of the \acr{ABM} were directly based on modifiable infection control practices, such as toilet cleaning frequency and antimicrobial prescription rates. Therefore, the main analyses and senstivity analyses were performed using the \acr{ABM}.
 
 After calibrating the \acr{ABM} using \acr{ABC}, three groups of parameters were produced: 1) baseline parameters, which aimed to generate similar rates of infection to the basal rate (i.e., pre- and post-outbreak); 2) outbreak parameters, which led to the increased transmission observed during the outbreak period; and 3) control parameters, which reflect enhanced infection control practice that led to outbreak control. A summary of the posterior estimates of the parameters (reported as the mean and standard deviation of the parameters from the rejection \acr{ABC}) is shown in @tbl-posteriors. The densities of the posterior parameter distributions are shown in @fig-posterior-densities. In line with the prior bounds described in @sec-outbreak-generation, the posterior distributions of the parameters were consistent with the expected changes in the parameters during the outbreak and control periods (e.g., the toilet cleaning rate changed from `r b_toilet_clean_rate` to `r o_toilet_clean_rate`, and to `r c_toilet_clean_rate` during the baseline, outbreak, and control periods respectively).
 
