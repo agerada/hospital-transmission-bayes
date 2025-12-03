@@ -1,5 +1,5 @@
 ---
-title: Gastro-intestinal transmission of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings -- calibration of an agent-based model
+title: Gastro-intestinal transmission of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings -- calibration of a simulation model
 authors:
   - name: Alessandro Gerada
     affiliation: University of Liverpool
@@ -117,13 +117,29 @@ where:
 -   $x_i(t) = 0$ if patient $i$ is not infected at time $t$,
 -   $x_i(t) = 1$ if patient $i$ is infected at time $t$.
 
-Since the simulation's target diseases were associated with long term colonisation and prolonged risk of transmission to other patients, it was assumed that infection was not reversible during the simulation, i.e., that infected patients remained infected until discharge. At each time increment, the probability of a non-infected patient $i$ acquiring infection (i.e., transitioning from a non-infected to infected state)---$P_i(t)$---depended on: 1) a baseline risk of *de novo* infection; and 2) the usage of contaminated toilets:
+On admission, each patient had a probability $\lambda$ of being infected, representing the community infection rate. The simulation determined the infection status of each patient on admission using Bernoulli trials:
+
+$$
+X_{\text{community}, i} \sim \text{Bernoulli}(\lambda),
+$$
+
+where $X_{\text{community}, i} = 1$ if patient $i$ is infected on admission, and 0 otherwise.
+
+Since the simulation's target diseases were associated with long term colonisation and prolonged risk of transmission to other patients, it was assumed that infection was not reversible during the simulation, i.e., that infected patients remained infected until discharge. At each time increment, the probability of a non-infected patient $i$ acquiring infection (i.e., transitioning from a non-infected to infected state)---$P_i(t)$---depended on: 1) a baseline risk of *de novo* infection; and 2) the usage of contaminated toilets. The probability of infection through these two routes---$P_{\text{de novo}, i}(t)$ and $P_{\text{toilet}, i}(t)$, respectively---were independent; therefore, the probability of patient $i$ acquiring infection at time $t$ was given by:
 
 $$
 P_i(t) = 1 - \left[ (1 - P_{\text{de novo}, i}(t)) \cdot (1 - P_{\text{toilet}, i}(t)) \right],
 $$
 
 where:
+
+* $(1- P_{\text{de novo}, i}(t))$ is the probability of patient $i$ not acquiring infection *de novo* at time $t$,
+
+* $(1 - P_{\text{toilet}, i}(t))$ is the probability of patient $i$ not acquiring infection from a contaminated toilet at time $t$, and
+
+* $[(1 - P_{\text{de novo}, i}(t)) \cdot (1 - P_{\text{toilet}, i}(t))]$ is the probability of patient $i$ not acquiring infection at time $t$.
+
+The individual probabilities were defined as:
 
 $$ 
 P_{\text{de novo}, i}(t) = 1 - \text{exp}{ {( - r_0 \cdot T_i(t) )} },
@@ -135,8 +151,6 @@ P_{\text{toilet}, i}(t) = 1 - \text{exp}{ \left( {-\sum_{j=0}^{U_i(t)}[C(t) \cdo
 $$
 
 where:
-
--   $P_i(t)$ is the risk of patient $i$ acquiring infection at time $t$,
 
 -   $r_0$ is the baseline/*de novo* risk of infection,
 
@@ -153,37 +167,21 @@ where:
     \end{cases}
     $$
 
--   $m$ is the increased (or decreased) relative risk of infection due to antimicrobial therapy.
+-   $m$ is the increased (or decreased) relative risk of infection due to antimicrobial therapy, where $m>0$.
 
 In the agent-based model implementation, Bernoulli trials were conducted to determine if a patient became infected at each time step $t$:
 
 $$
-X_\text{de novo, i}(t) \sim \text{Bernoulli}(P_{\text{de novo}, i}(t)),
+X_{\text{hospital}, i}(t) \sim \text{Bernoulli}(P_i(t))
 $$
 
-where $X_{\text{de novo}, i}$ = 1 if patient $i$ becomes infected *de novo* at time $t$, and 0 otherwise.
-
-Further Bernoulli trials were conducted to determine if a patient became infected from a contaminated toilet at each time step $t$:
-
-$$
-X_{\text{toilet}, i}(t) \sim \text{Bernoulli}(P_{\text{toilet}, i}(t)),
-$$
-
-where $X_{\text{toilet}, i}$ = 1 if patient $i$ becomes infected from a contaminated toilet at time $t$, and 0 otherwise.
-
-The results of the trials were combined to determine the outcome for patient $p$ at time $t$; the patient became infected if either trial was successful:
-
-$$
-X_i(t) = \text{Max}(X_{\text{de novo}, i}, X_{\text{toilet}, i}),
-$$
-
-where $X_i(t)$ = 1 if patient $i$ becomes infected at time $t$, and 0 otherwise.
+where $X_{\text{hospital}, i}(t) = 1$ if patient $i$ acquires infection during their hospital stay at time $t$, and 0 otherwise.
 
 During the simulation, the contamination level $C$ of each toilet increased when an infected patient used it, and decreased when the toilet was cleaned. 
 
-Infected patients were moved to single-occupancy rooms (side rooms) after infection. To capture delays in moving patients into side rooms (which can be due to delays in diagnosis, and/or lack of available side rooms), the simulation included an optional parameter that samples the delay from a Poisson distribution with a configurable mean (in days). Once the infected patient has completed their delay, they became eligible to move to the next available side room. To implement this, the simulation used a \acr{FIFO} queue to track infected patients waiting for a side room. While direct patient swaps were possible (i.e., swapping a non-infected patient in a side room with an infected patient waiting for a side room), more complex swaps involving multiple patients were not implemented.
+Infected patients were moved to single-occupancy rooms (side rooms) after infection. To capture delays in moving patients into side rooms (which can be due to delays in diagnosis, and/or lack of available side rooms), the simulation included an optional parameter that samples the delay from a Poisson distribution with a configurable mean (in days). Once the infected patient completed their delay, they became eligible to move to the next available side room. To implement this, the simulation used a \acr{FIFO} queue to track infected patients waiting for a side room. While direct patient swaps were possible (i.e., swapping a non-infected patient in a side room with an infected patient waiting for a side room), more complex swaps involving multiple patients were not implemented.
 
-Each patient's admission duration was sampled from a Poisson distribution with a configurable mean (in days). Upon discharge, patients were removed from the simulation, and replaced with new admissions to maintain 100% occupancy. New admissions had a probability of being infected based on the community infection rate parameter.
+Each patient's admission duration was sampled from a Poisson distribution with a configurable mean (in days). Upon discharge, patients were removed from the simulation; each patient was then replaced with new patient admission. Although real hospitals do not operate at 100% occupancy at all times, this assumption was made to simplify the model.
 
 ## Stochastic system dynamics model
 
