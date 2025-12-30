@@ -1,14 +1,10 @@
 ---
-title: Gastro-intestinal transmission of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings -- calibration of a simulation model
-authors:
-  - name: Alessandro Gerada
-    affiliation: University of Liverpool
-    roles: writing
-    corresponding: true
+title: "Simulating interventions to prevent gastro-intestinal transmission of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings: a model calibration study"
 bibliography: references.bib
 csl: https://raw.githubusercontent.com/citation-style-language/styles/refs/heads/master/elsevier-vancouver.csl
 filters:
   - acronyms
+  - authors-block
 acronyms:
   keys:
   - shortname: CDI
@@ -42,6 +38,43 @@ acronyms:
     longname: system dynamics
   insert_loa: false
   insert_links: false
+authors:
+  - name: Alessandro Gerada
+    affiliations:
+      - ref: APT
+      - ref: LCL
+    orcid: 0000-0002-6743-4271
+    email: alessandro.gerada@liverpool.ac.uk
+    corresponding: true
+  - name: Charlotte Brookefield
+    affiliations:
+      - ref: APT
+      - ref: LCL
+  - name: Alex Howard
+    affiliations:
+      - ref: APT
+      - ref: LCL
+  - name: Nada Reza
+    affiliations:
+      - ref: APT
+  - name: Conor Rosato
+    affiliations:
+      - ref: APT
+  - name: Peter L. Green
+    affiliations:
+      - ref: APT
+      - ref: SOE
+  - name: William Hope
+    affiliations:
+      - ref: APT
+      - ref: LCL
+affiliations:
+  - id: APT
+    name: Antimicrobial Pharmacodynamics and Therapeutics, Department of Clinical Pharmacology and Therapeutics, Institute of Systems, Molecular & Integrative Biology, University of Liverpool
+  - id: LCL
+    name: Department of Infection and Immunity, Liverpool Clinical Laboratories, Clinical Support Services Building (CSSB), Liverpool University Hospitals NHS Foundation Trust
+  - id: SOE
+    name: School of Engineering, Foundation Building, Brownlow Hill, University of Liverpool, Liverpool, L69 7ZX
 ---
 
 # Background
@@ -88,7 +121,7 @@ A key role of \acr{IPC} teams is to prepare for, declare, investigate, and contr
 In practice, an outbreak is declared after rates of infection have been compared to historical rates, and this is followed by a series of interventions to control the outbreak.
 These interventions may include increased frequency and thoroughness of environmental cleaning, cohorting of infected patients (particularly into single-occupancy _en suite_ rooms), and increased hand hygiene compliance.
 The impact of these interventions is often difficult to quantify.
-Although evidence suggests that the interventions can help control outbreaks, studies almost always report their findings after a suite of interventions have been implemented -- therefore, the relative importance of each intervention is not usually quantifiable.
+Although evidence suggests that the interventions can help control outbreaks, studies almost always report their findings after a suite of interventions have been implemented -- therefore, the relative importance of each intervention is not usually quantifiable [@baierMultimodalInfectionControl2018; @davisImpactPreventionBundle2016].
 Furthermore, studies report findings from a population that may be very different from the outbreak population being managed -- differences can range from patient factors such as co-morbidities and rates of antimicrobial resistance, to institution practices such as rates of antimicrobial usage, and to structural differences such as hospital layout.
 
 In practice, the approach to managing outbreaks is often reactive.
@@ -126,7 +159,7 @@ $$
 
 where $X_{\text{community}, i} = 1$ if patient $i$ is infected on admission, and 0 otherwise.
 
-Since the simulation's target diseases were associated with long term colonisation and prolonged risk of transmission to other patients, it was assumed that infection was not reversible during the simulation, i.e., that infected patients remained infected until discharge. At each time increment, the probability of a non-infected patient $i$ acquiring infection (i.e., transitioning from a non-infected to infected state)---$P_i(t)$---depended on: 1) a baseline risk of *de novo* infection; and 2) the usage of contaminated toilets. The probability of infection through these two routes---$P_{\text{de novo}, i}(t)$ and $P_{\text{toilet}, i}(t)$, respectively---were independent; therefore, the probability of patient $i$ acquiring infection at time $t$ was given by:
+Since the simulation's target diseases were associated with long term colonisation and prolonged risk of transmission to other patients, it was assumed that infection was not reversible during the simulation, i.e., that infected patients remained infected until discharge. At each time increment, the probability of a non-infected patient $i$ acquiring infection (i.e., transitioning from a non-infected to infected state)---$P_i(t)$---depended on: 1) a baseline risk of *de novo* infection; and 2) the usage of contaminated toilets. In this context, *de novo* infection was assumed to capture routes of transmission outwith toilet use, and infection which was not directly related to a traceable transmission event. The probability of infection through these two routes---$P_{\text{de novo}, i}(t)$ and $P_{\text{toilet}, i}(t)$, respectively---were independent; therefore, the probability of patient $i$ acquiring infection at time $t$ was given by:
 
 $$
 P_i(t) = 1 - \left[ (1 - P_{\text{de novo}, i}(t)) \cdot (1 - P_{\text{toilet}, i}(t)) \right],
@@ -278,7 +311,7 @@ o_toilet_clean_rate <- round(mean(posteriors[, "o-toilet-cleaning-rate"]), 2)
 c_toilet_clean_rate <- round(mean(posteriors[, "c-toilet-cleaning-rate"]), 2)
 ```
 
-After calibrating the \acr{ABM} using \acr{ABC}, three groups of parameters were produced: 1) baseline parameters, which aimed to generate similar rates of infection to the basal rate (i.e., pre- and post-outbreak); 2) outbreak parameters, which led to the increased transmission observed during the outbreak period; and 3) control parameters, which reflect enhanced infection control practice that led to outbreak control. A summary of the posterior estimates of the parameters (reported as the mean and standard deviation of the parameters from the rejection \acr{ABC}) is shown in @tbl-posteriors. The densities of the posterior parameter distributions are shown in @fig-posterior-densities. The posterior distributions of the parameters were consistent with the expected changes in the parameters during the outbreak and control periods (e.g., the toilet cleaning rate changed from `r b_toilet_clean_rate` to `r o_toilet_clean_rate`, and to `r c_toilet_clean_rate` during the baseline, outbreak, and control periods respectively).
+After calibrating the \acr{ABM} using \acr{ABC}, three groups of parameters were produced: 1) baseline parameters, which aimed to generate similar rates of infection to the basal rate (i.e., pre- and post-outbreak); 2) outbreak parameters, which led to the increased transmission observed during the outbreak period; and 3) control parameters, which reflect enhanced infection control practice that led to outbreak control. A summary of the posterior estimates of the parameters (reported as the median and interquartile range of the parameters from the rejection \acr{ABC}) is shown in @tbl-posteriors. The densities of the posterior parameter distributions are shown in @fig-posterior-densities. The posterior distributions of the parameters were consistent with the expected changes in the parameters during the outbreak and control periods (e.g., the toilet cleaning rate changed from `r b_toilet_clean_rate` to `r o_toilet_clean_rate`, and to `r c_toilet_clean_rate` during the baseline, outbreak, and control periods respectively).
 
 ```{r tbl-posteriors, include=TRUE}
 #| tbl-cap: "Summary of parameter posteriors after calibration using approximate Bayesian computation."
@@ -291,12 +324,12 @@ params_table <- abc_params_outbreak_control$unadj.values %>%
          "c-antibiotic-prescription-rate" = `c-antibiotic-prescription-rate` * 100) %>% 
   dplyr::select(!any_of(c("outbreak-start", "outbreak-end", "control-end"))) %>%
   dplyr::rename_with(.fn = \(.x) paste0("b-", .x), .cols = !starts_with("o-") & !starts_with("c-")) %>% 
-  summarise(across(everything(), ~ paste0(
-    round(mean(.x), 2),
-    " (",
-    round(sd(.x), 2),
-    ")"
-    )))
+  summarise(across(everything(), ~ {
+    med <- median(.x)
+    q25 <- quantile(.x, 0.25)
+    q75 <- quantile(.x, 0.75)
+    paste0(round(med, 2), " (", round(q25, 2), "–", round(q75, 2), ")")
+  }))
 
 param_units <- c("toilet-frequenting-rate" = "times per day",
                  "toilet-cleaning-rate" = "times per day",
@@ -308,7 +341,7 @@ param_units <- c("toilet-frequenting-rate" = "times per day",
                  "random-colonisation" = "cases per 10,000 bed days",
                  "side-room-delay-mean" = "days")
 
-param_names <- c("toilet-frequenting-rate" = "Toilet frequenting rate",
+param_names <- c("toilet-frequenting-rate" = "Patient toilet frequenting rate",
                  "toilet-cleaning-rate" = "Toilet cleaning rate",
                  "toilet-contamination-effect" = "Toilet contamination effect",
                  "toilet-cleaning-effect" = "Toilet cleaning effect",
@@ -328,6 +361,9 @@ params_table %>%
   mutate(units = param) %>% 
   relocate(units, .after = param) %>%
   flextable() %>% 
+  add_header_row(values = c("Parameter name", "Units", "Value"), colwidths = c(1, 1, 3)) %>% 
+  set_header_labels(param = "", units = "", baseline = "Baseline", outbreak = "Outbreak", control = "Control") %>% 
+  align(i = 1, j = 3, align = "center", part = "header") %>% 
   labelizor(j = "units", part = "body",
             labels = param_units) %>% 
   labelizor(j = "param", part = "body",
@@ -1072,7 +1108,7 @@ The model was designed to simulate the spread of infection at a baseline (or bac
 
 To simulate outbreaks and periods of enhanced infection control, the model was designed to change parameters at discrete time points. For example, the rate of antimicrobial prescriptions was higher during the outbreak period, promoting the spread of infection. Later, the prescription rate was reduced to help control the outbreak. The NetLogo model implementation was designed so that a fixed parameter set was used as an input, and the outbreak and enhanced IPC parameters were only used during their respective periods. In effect, all input parameters were provided as a fixed input -- some parameters were only used by the simulation at defined discrete intervals. This approach may be unsuitable for modelling of transmission without a clear outbreak pattern -- more complex implementations of time-varying parameters could be explored.
 
-Although \acrs{ABM} have been shown to be useful for simulating and modelling infectious disease transmission, they have limitations. The model described here is a simplification of what is likely to be a highly intricate and complicated system. For example, transmission was assumed to be 'random' or acquired through the use of a contaminated toilet. In reality, other transmission pathways likely exist, such as through contact with staff or contaminated bedding. Antimicrobial exposure was considered to be a binary risk factor for an agent becoming infected. Antimicrobial class and duration of exposure are factors that are not accounted for in this model. An \acr{ABM} that captures all the details that influence the spread of infection in a hospital setting is unlikely to be feasible, due to the computational challenge and the large number of parameters that would need to be estimated. A reasonable approach is for the model to be as simple as possible, while still capturing the features required to answer the research question [@sunSimpleComplicatedAgentbased2016]. Another limitation of \acrs{ABM} is the requirement for detailed data to calibrate and validate the model. Here, the data used was primarily from a retrospective descriptive dataset. As such, information on certain parameters was not available (e.g., the proportion of patients that were administered an antimicrobial during their admission) -- these parameters were estimated from the literature. An important future direction would be to prospectively inform and validate the model with data collected specifically for this purpose.
+Although \acrs{ABM} have been shown to be useful for simulating and modelling infectious disease transmission, they have limitations. The model described here is a simplification of what is likely to be a highly intricate and complicated system. For example, transmission was assumed to be 'random' or acquired through the use of a contaminated toilet. In reality, other transmission pathways likely exist, such as through contact with staff or contaminated bedding. Antimicrobial exposure was considered to be a binary risk factor for an agent becoming infected. Antimicrobial class and duration of exposure are factors that are not accounted for in this model. An \acr{ABM} that captures all the details that influence the spread of infection in a hospital setting is unlikely to be feasible, due to the computational challenge and the large number of parameters that would need to be estimated. A reasonable approach is for the model to be as simple as possible, while still capturing the features required to answer the research question [@sunSimpleComplicatedAgentbased2016]. Another limitation of \acrs{ABM} is the requirement for detailed data to calibrate and validate the model. Here, the data used were primarily from a retrospective descriptive dataset. As such, information on certain parameters was not available (e.g., the proportion of patients that were administered an antimicrobial during their admission) -- these parameters were estimated from the literature. An important future direction would be to prospectively inform and validate the model with data collected specifically for this purpose.
 
 \acrs[case=sentence, first_use]{ABM} that simulate the hospital transmission of pathogens transmitted through the faecal-oral route, including _C. difficile_ and vancomycin-resistant _Enterococci_, have been reported previously [@codellaAgentbasedSimulationModel2015; @debosckerAgentbasedModelSimulate2021]. Some models have also explored the impact of one or more infection control interventions on the spread of infection [@barkerInterventionsReduceIncidence2018; @rubinSimulationBasedAssessmentStrategies2013]. Our model builds on these works by designing and calibrating the model to an outbreak and enhanced \acr{IPC} period. The motivation for this was to design a model that can be used to support infection and prevention teams in the following: 1) preparedness for outbreak situations; and 2) decision-making on the implementation of infection control interventions during an outbreak. Furthermore, the model was designed to be pathogen-agnostic to allow for a stepwise approach for future work -- pathogen-specific features (e.g., diagnostic and laboratory testing) can be added as required. The choice of NetLogo as a platform allows for the model to be used interactively by non-programmers, such as infection control practitioners; the model can also be modified and extended with the relatively simple NetLogo language.
 
