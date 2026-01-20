@@ -75,6 +75,8 @@ affiliations:
     name: Department of Infection and Immunity, Liverpool Clinical Laboratories, Clinical Support Services Building (CSSB), Liverpool University Hospitals NHS Foundation Trust
   - id: SOE
     name: School of Engineering, Foundation Building, Brownlow Hill, University of Liverpool, Liverpool, L69 7ZX
+abstract: |
+  Hospital-acquired infections caused by pathogens such as *Clostridioides difficile* and antimicrobial-resistant bacteria are a major burden to healthcare systems. Infection prevention and control (IPC) measures are used to limit transmission, but quantifying the impact of individual interventions remains challenging. Here, we describe an agent-based model (ABM) that simulates faecal-oral transmission of pathogens under antimicrobial selection pressure in hospital settings. The model was calibrated to a *C. difficile* outbreak using approximate Bayesian computation. The calibrated model reproduced the observed outbreak dynamics with rates of nosocomial infection that were similar to the true outbreak. Sensitivity analyses revealed that toilet cleaning frequency had the greatest impact on reducing nosocomial infections; antimicrobial stewardship and patient cohorting into single-occupancy rooms also reduced cases. This ABM provides a flexible framework for evaluating IPC interventions and supporting outbreak preparedness. The approach is readily adaptable to other faecal-orally transmitted pathogens including vancomycin-resistant *Enterococcus* and carbapenemase-producing Enterobacterales.
 ---
 
 # Background
