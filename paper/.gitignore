@@ -3,3 +3,6 @@ paper_files
 paper.tex
 
 **/*.quarto_ipynb
+
+paper.docx
+paper.pdf
