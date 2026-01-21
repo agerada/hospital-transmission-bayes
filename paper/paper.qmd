@@ -1108,4 +1108,10 @@ To assess the sensitivity of the calibrated \acr{ABM} to changes in infection co
 
 The \acr{ABM} was implemented in NetLogo v6.2.2 [@wilenskyu.NetLogo1999]. The R package `nlrx` was used to execute simulations and transfer output data for analysis in R [@rcoreteamLanguageEnvironmentStatistical2022; @saleckerNlrxPackageNextgeneration2019].
 
+## Data availability
+
+Data and software code are available at:
+
+https://github.com/agerada/hospital-transmission-bayes
+
 # References
