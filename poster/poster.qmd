@@ -28,8 +28,8 @@ bibliography: refs.bib
 # set text(font: "STIX Two Text", size: 24pt)
 library(tidyverse)
 library(abc)
-source(file.path("..", "calibrate.R"))
-# load(file.path("..", "out", "calibrate.RData"))
+# source(file.path("..", "calibrate.R"))
+load(file.path("..", "out", "calibrate.RData"))
 ```
 
 Transmission of potentially pathogenic bacteria under antimicrobial selective pressure has important implications for control of hospital-acquired infection. Examples include *Clostridioides difficile* infection (CDI) and Vancomycin-resistant *Enterococcus*. In addition to patient factors, colonisation risk depends on environmental factors (e.g., surface cleaning), proximity to other colonised patients, and use of antimicrobial agents. To guide infection control strategies, especially during outbreaks, we developed an agent-based simulator and estimated its parameters using data from a CDI outbreak documented by Salgado et al @salgado2009.

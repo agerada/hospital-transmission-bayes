@@ -1,5 +1,6 @@
 # Project specific
 /out/
+/out_*/
 .DS_Store
 *tmp.nlogo
 /slurm_out/
@@ -54,5 +55,3 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
-/out_lhs/
-/out_random/
