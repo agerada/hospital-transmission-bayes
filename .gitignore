@@ -56,5 +56,5 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
-/out_lhs
-/out_random
+/out_lhs/
+/out_random/
