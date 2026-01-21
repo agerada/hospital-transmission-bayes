@@ -59,7 +59,7 @@ outbreak_antibiotic_rate <- round(mean(posteriors[, "o-antibiotic-prescription-r
 control_antibiotic_rate <- round(mean(posteriors[, "c-antibiotic-prescription-rate"] * 100), 2)
 ```
 
-After calibration, key parameters included: community colonisation rate of `r comm_colonisation`%, rising to `r outbreak_colonisation`% during the outbreak period. Furthermore, the proportion of patients prescribed an antimicrobial during their admission increased from `r consts[["antibiotic-prescription-rate"]] * 100`% to `r outbreak_antibiotic_rate`% during the outbreak; then reduced to `r control_antibiotic_rate`% during the period of enhanced infection control measures. The posterior parameter distributions are shown in @fig-posterior-densities. Simulated data had a pre-outbreak baseline median rate of `r round(pre_outbreak_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_sims_rates$rate_q_low, 2)`--`r round(outbreak_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
+After calibration, key parameters included: community colonisation rate of `r comm_colonisation`%, rising to `r outbreak_colonisation`% during the outbreak period. Furthermore, the proportion of patients prescribed an antimicrobial during their admission increased from `r consts[["antibiotic-prescription-rate"]] * 100`% to `r outbreak_antibiotic_rate`% during the outbreak; then reduced to `r control_antibiotic_rate`% during the period of enhanced infection control measures. The posterior parameter distributions are shown in @fig-posterior-densities. Simulated data had a pre-outbreak baseline median rate of `r round(pre_outbreak_posterior_predictive_sims_rates$rate_median, 2)` cases per 1000 patient days \[interquartile (IQR) range `r round(pre_outbreak_posterior_predictive_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_posterior_predictive_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[IQR 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_posterior_predictive_sims_rates$rate_median, 2)` \[IQR `r round(outbreak_posterior_predictive_sims_rates$rate_q_low, 2)`--`r round(outbreak_posterior_predictive_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[IQR 3.32--4.41\] (see @fig-simulated-rates).
 
 ```{r}
 #| echo: false
@@ -202,7 +202,7 @@ ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
 #| fig.height: 8
 #| include: false
 #| message: false
-consts_sim_rates %>% 
+posterior_predictive_sim_rates %>% 
   pivot_wider(names_from = date_sim, values_from = rate) %>% 
   #slice_sample(n=10) %>% 
   pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
