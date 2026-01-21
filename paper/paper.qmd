@@ -1,0 +1,1111 @@
+---
+title: "Simulating interventions to prevent gastro-intestinal transmission of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings: a model calibration study"
+bibliography: references.bib
+csl: https://raw.githubusercontent.com/citation-style-language/styles/refs/heads/master/elsevier-vancouver.csl
+filters:
+  - acronyms
+  - authors-block
+acronyms:
+  keys:
+  - shortname: CDI
+    longname: _Clostridium difficile_ infection
+    markdown: longname
+  - shortname: VRE
+    longname: vancomycin-resistant _Enterococcus_
+    markdown: longname
+  - shortname: ESBL
+    longname: extended-spectrum beta-lactamase
+  - shortname: CPE
+    longname: carbapenemase-producing Enterobacterales
+  - shortname: WHO
+    longname: World Health Organization
+  - shortname: IPC
+    longname: infection prevention and control
+  - shortname: ABM
+    longname: agent-based model
+  - shortname: MRSA
+    longname: methicillin-resistant _Staphylococcus aureus_
+    markdown: longname
+  - shortname: SARS-CoV-2
+    longname: severe acute respiratory syndrome coronavirus 2
+  - shortname: ABC
+    longname: approximate Bayesian computation
+  - shortname: IQR
+    longname: interquartile range
+  - shortname: FIFO
+    longname: first-in, first-out
+  - shortname: SD
+    longname: system dynamics
+  insert_loa: false
+  insert_links: false
+authors:
+  - name: Alessandro Gerada
+    affiliations:
+      - ref: APT
+      - ref: LCL
+    orcid: 0000-0002-6743-4271
+    email: alessandro.gerada@liverpool.ac.uk
+    corresponding: true
+  - name: Charlotte Brookefield
+    affiliations:
+      - ref: APT
+      - ref: LCL
+  - name: Alex Howard
+    affiliations:
+      - ref: APT
+      - ref: LCL
+  - name: Nada Reza
+    affiliations:
+      - ref: APT
+  - name: Conor Rosato
+    affiliations:
+      - ref: APT
+  - name: Peter L. Green
+    affiliations:
+      - ref: APT
+      - ref: SOE
+  - name: William Hope
+    affiliations:
+      - ref: APT
+      - ref: LCL
+affiliations:
+  - id: APT
+    name: Antimicrobial Pharmacodynamics and Therapeutics, Department of Clinical Pharmacology and Therapeutics, Institute of Systems, Molecular & Integrative Biology, University of Liverpool
+  - id: LCL
+    name: Department of Infection and Immunity, Liverpool Clinical Laboratories, Clinical Support Services Building (CSSB), Liverpool University Hospitals NHS Foundation Trust
+  - id: SOE
+    name: School of Engineering, Foundation Building, Brownlow Hill, University of Liverpool, Liverpool, L69 7ZX
+abstract: |
+  Hospital-acquired infections caused by pathogens such as *Clostridioides difficile* and antimicrobial-resistant bacteria are a major burden to healthcare systems. Infection prevention and control (IPC) measures are used to limit transmission, but quantifying the impact of individual interventions remains challenging. Here, we describe an agent-based model (ABM) that simulates faecal-oral transmission of pathogens under antimicrobial selection pressure in hospital settings. The model was calibrated to a *C. difficile* outbreak using approximate Bayesian computation. The calibrated model reproduced the observed outbreak dynamics with rates of nosocomial infection that were similar to the true outbreak. Sensitivity analyses revealed that toilet cleaning frequency had the greatest impact on reducing nosocomial infections; antimicrobial stewardship and patient cohorting into single-occupancy rooms also reduced cases. This ABM provides a flexible framework for evaluating IPC interventions and supporting outbreak preparedness. The approach is readily adaptable to other faecal-orally transmitted pathogens including vancomycin-resistant *Enterococcus* and carbapenemase-producing Enterobacterales.
+---
+
+# Introduction
+
+```{r setup, include=FALSE}
+# here::i_am("paper/index.qmd")
+run_sims <- FALSE
+set.seed(42)
+
+# I could not get R code to run before, until I did this:
+# https://github.com/brentthorne/posterdown/issues/42
+
+# to change body font size:
+# change this line in typst-template.typ:
+# set text(font: "STIX Two Text", size: 24pt)
+library(tidyverse)
+library(abc)
+library(lhs)
+library(flextable)
+library(ftExtra)
+library(progressr)
+```
+
+```{r load-data, include=FALSE, eval=FALSE}
+# This runs the calibrate scripts and loads objects into memory.
+# print(file.exists(here::here("scripts", "calibrate.R")))
+# source(here::here("scripts", "calibrate.R"))
+source(file.path("..", "scripts", "calibrate.R"), chdir = TRUE)
+# load(file.path("..", "out", "calibrate.RData"))
+```
+
+```{r load-pre-processed-data, include=FALSE}
+# Alternatively, just load previously dumped .RData from a run of calibrate.R
+load(file.path("..", "out_random", "calibrate.RData"))
+```
+
+The transmission of pathogenic bacteria in hospitals results in excessive morbidity and mortality.
+Relevant examples include *Clostridioides difficile*, \acr{VRE}, \acr{ESBL}-producing Enterobacerales, and \acr{CPE}.
+Drug resistance further compounds the problem --- for example, \acr{CPE} bloodstream infection is associated with a considerably increased risk of in-hospital mortality compared to carbapenem-susceptible infection [@budhramHealthOutcomesAttributable2020].
+\acr{CDI} is associated with prolonged hospital stay and increased healthcare costs, causing a significant operational burden [@forsterEffectHospitalacquiredInfection2012].
+Furthermore, the therapeutic antimicrobial options available for \acr{VRE}, \acr{ESBL}, and \acr{CPE} are limited, leading to increased use of \acr{WHO} reserve agents, which further exacerbates the problem of antimicrobial resistance and \acr{CDI} [@organization2019WHOAWaRe2019].
+
+\acr[case=sentence, first_use]{IPC} measures are designed to prevent the spread of these pathogens within healthcare settings. Commonly used interventions include hand hygiene, environmental cleaning, and the isolation of infected patients [@worldhealthorganizationGlobalReportInfection2022].
+A key role of \acr{IPC} teams is to prepare for, declare, investigate, and control outbreaks of healthcare-associated infections.
+In practice, an outbreak is declared after rates of infection have been compared to historical rates, and this is followed by a series of interventions to control the outbreak.
+These interventions may include increased frequency and thoroughness of environmental cleaning, cohorting of infected patients (particularly into single-occupancy _en suite_ rooms), and increased hand hygiene compliance.
+The impact of these interventions is often difficult to quantify.
+Although evidence suggests that the interventions can help control outbreaks, studies almost always report their findings after a suite of interventions have been implemented -- therefore, the relative importance of each intervention is not usually quantifiable [@baierMultimodalInfectionControl2018; @davisImpactPreventionBundle2016].
+Furthermore, studies report findings from a population that may be very different from the outbreak population being managed -- differences can range from patient factors such as co-morbidities and rates of antimicrobial resistance, to institution practices such as rates of antimicrobial usage, and to structural differences such as hospital layout.
+
+In practice, the approach to managing outbreaks is often reactive.
+The number of cases of infection is monitored over a time frame dependent on the pathogen, setting, and scale of the outbreak.
+If the measures are successful in controlling the spread, then they are gradually relaxed once rates return to baseline.
+If they are not, then further measures are implemented, or the existing measures are intensified, until control is achieved.
+A inherent limitation of this approach is that decisions are made based on observed data, and the impact of interventions cannot be quantified until after a change in the rate of infection has been observed, by which time further preventable nosocomial infections may have occurred.
+
+The use of computer simulation techniques can be used to model the spread of infectious diseases, and has been used to describe the transmission of pathogens that are important in healthcare settings, such as
+\acr{MRSA} [@jaramilloAgentBasedModel2015] and \acr{SARS-CoV-2} [@kerrCovasimAgentbasedModel2021]. An advantage of simulation models is that they can be used to project the impact of interventions on transmission, prior to their implementation [@cassidyMathematicalModellingHealth2019]. One approach is to use \acrs{ABM}, which model systems by constructing a virtual environment (such as a hospital), within which agents (such as patients and/or staff) interact based on a set of user-defined rules. Compared to other simulation approaches, such as \acr{SD}, which is a high-level approach that models the flow of patients between different compartments (e.g., susceptible, infected, recovered), \acr{ABM} allows for a detailed representation of individual agents and their interactions. This makes \acr{ABM} particularly well-suited for modelling the spread of infections in healthcare settings, where individual patient factors and interactions can influence transmission dynamics.
+
+Here, we describe an \acr{ABM} that models the transmission of faecal-oral-transmitted pathogens under antimicrobial selection pressure. Our aim was to explore the impact of various infection control strategies and interventions, particularly during outbreak periods. The parameters were estimated using data from a \acr{CDI} outbreak [@salgadoAnalysisOutbreakClostridium2009], although our intention is that the approach is readily adaptable to other related antimicrobial-resistant pathogens such as \acr{VRE}, \acr{ESBL}, and \acr{CPE}.
+
+# Results
+
+## Model design and calibration
+
+We developed an \acr{ABM} using NetLogo that simulates a virtual hospital environment, where patients can acquire infection through two main routes: via the use of contaminated toilets, and through _de novo_ infection (capturing other transmission not directly associated with toilet use). Patients receiving antimicrobial therapy had an increased risk of infection. The model was calibrated using data from a published _C. difficile_ outbreak, applying rejection sampling \acr{ABC} to fit model parameters to observed infection rates.
+
+```{r text-vals, include=FALSE}
+posteriors <- abc_params_outbreak_control$unadj.values
+comm_colonisation <- round(mean(posteriors[, "community-colonisation-rate"] * 100), 2)
+outbreak_colonisation <- round(mean(posteriors[, "o-community-colonisation-rate"] * 100), 2)
+outbreak_antibiotic_rate <- round(mean(posteriors[, "o-antibiotic-prescription-rate"] * 100), 2)
+control_antibiotic_rate <- round(mean(posteriors[, "c-antibiotic-prescription-rate"] * 100), 2)
+b_toilet_clean_rate <- round(mean(posteriors[, "toilet-cleaning-rate"]), 2)
+o_toilet_clean_rate <- round(mean(posteriors[, "o-toilet-cleaning-rate"]), 2)
+c_toilet_clean_rate <- round(mean(posteriors[, "c-toilet-cleaning-rate"]), 2)
+```
+
+After calibrating the \acr{ABM} using \acr{ABC}, three groups of parameters were produced: 1) baseline parameters, which generated rates of infection during non-outbreak settings; 2) outbreak parameters, which led to the increased transmission observed during the outbreak period; and 3) control parameters, which reflect enhanced infection control practice that led to outbreak control. A summary of the posterior estimates of the parameters (reported as the median and interquartile range of the parameters from the rejection \acr{ABC}) is shown in @tbl-posteriors. The densities of the posterior parameter distributions are shown in @fig-posterior-densities. The posterior distributions of the parameters were consistent with the expected changes in the parameters during the outbreak and control periods (e.g., the toilet cleaning rate changed from `r b_toilet_clean_rate` to `r o_toilet_clean_rate`, and to `r c_toilet_clean_rate` (times per day) during the baseline, outbreak, and control periods respectively).
+
+```{r tbl-posteriors, include=TRUE}
+#| tbl-cap: "Summary of parameter posteriors after calibration using approximate Bayesian computation."
+#| echo: false
+params_table <- abc_params_outbreak_control$unadj.values %>% 
+  as_tibble() %>% 
+  mutate("community-colonisation-rate" = `community-colonisation-rate` * 100,
+         "o-community-colonisation-rate" = `o-community-colonisation-rate` * 100,
+         "o-antibiotic-prescription-rate" = `o-antibiotic-prescription-rate` * 100,
+         "c-antibiotic-prescription-rate" = `c-antibiotic-prescription-rate` * 100) %>% 
+  dplyr::select(!any_of(c("outbreak-start", "outbreak-end", "control-end"))) %>%
+  dplyr::rename_with(.fn = \(.x) paste0("b-", .x), .cols = !starts_with("o-") & !starts_with("c-")) %>% 
+  summarise(across(everything(), ~ {
+    med <- median(.x)
+    q25 <- quantile(.x, 0.25)
+    q75 <- quantile(.x, 0.75)
+    paste0(round(med, 2), " (", round(q25, 2), "–", round(q75, 2), ")")
+  }))
+
+param_units <- c("toilet-frequenting-rate" = "times per day",
+                 "toilet-cleaning-rate" = "times per day",
+                 "toilet-contamination-effect" = "",
+                 "toilet-cleaning-effect" = "",
+                 "community-colonisation-rate" = "percentage of patients",
+                 "antibiotic-prescription-rate" = "percentage of admissions",
+                 "antibiotic-effect" = "relative risk",
+                 "random-colonisation" = "cases per 10,000 bed days",
+                 "side-room-delay-mean" = "days")
+
+param_names <- c("toilet-frequenting-rate" = "Patient toilet frequenting rate",
+                 "toilet-cleaning-rate" = "Toilet cleaning rate",
+                 "toilet-contamination-effect" = "Toilet contamination effect",
+                 "toilet-cleaning-effect" = "Toilet cleaning effect",
+                 "community-colonisation-rate" = "Community infection rate",
+                 "antibiotic-prescription-rate" = "Antimicrobial prescription rate",
+                 "antibiotic-effect" = "Antimicrobial effect ($m$)",
+                 "random-colonisation" = "Baseline infection rate (*r*~0~)",
+                 "side-room-delay-mean" = "Side room delay mean")
+
+params_table %>% 
+  pivot_longer(cols = everything(), names_to = c("period", "param"), values_to = "value",
+               names_pattern = "(b|o|c)-(.*)") %>% 
+  pivot_wider(names_from = period, values_from = value) %>% 
+  # reorder cols
+  dplyr::select(param, b, o, c) %>% 
+  dplyr::rename(baseline = b, outbreak = o, control = c) %>% 
+  mutate(units = param) %>% 
+  relocate(units, .after = param) %>%
+  flextable() %>% 
+  add_header_row(values = c("Parameter name", "Units", "Value"), colwidths = c(1, 1, 3)) %>% 
+  set_header_labels(param = "", units = "", baseline = "Baseline", outbreak = "Outbreak", control = "Control") %>% 
+  align(i = 1, j = 3, align = "center", part = "header") %>% 
+  labelizor(j = "units", part = "body",
+            labels = param_units) %>% 
+  labelizor(j = "param", part = "body",
+            labels = param_names) %>% 
+  ftExtra::colformat_md(j = "param", part = "body") %>% 
+  width(width = 1) %>% 
+  font(fontname="Times New Roman",
+       part = "all") %>% 
+  fontsize(size = 10, part = "all")
+```
+
+```{r fig-posterior-densities, include=TRUE}
+#| eval: true
+#| echo: false
+#| fig.width: 18
+#| fig.height: 18
+#| warning: false
+#| fig-cap: "Changes in parameters during outbreak and enhanced infection control periods. Density plots with gaussian kernel smoothing show the posterior distributions of key simulation parameters after calibration using approximate Bayesian computation."
+general_params <- abc_params_outbreak_control$unadj.values %>% 
+  as_tibble %>% 
+  dplyr::select(-`outbreak-start`, -`outbreak-end`, -`control-end`,
+                -`antibiotic-effect`,
+                -`random-colonisation`) %>% 
+  dplyr::select(!contains("toilet")) %>% 
+  pivot_longer(cols=everything()) %>%
+  mutate(type = case_when(
+    str_starts(name, "o-") ~ "Outbreak",
+    str_starts(name, "c-") ~ "Control",
+    .default = "Baseline")) %>%
+  mutate(name = str_remove(name, "^o-|^c-")) %>%
+  mutate(name = str_replace_all(name, "-", " ")) %>%
+  mutate(name = str_replace_all(name, "colonisation", "infection")) %>%
+  mutate(name = str_to_title(name)) %>% 
+  # change type to ordered factor
+  mutate(type = factor(type, levels = c("Baseline", "Outbreak", "Control"))) %>%
+  ggplot(aes(x = value, ..scaled.., fill = type, linetype = type)) +
+  geom_density(alpha = .3) +
+  facet_wrap(~name, scales = "free_x") +
+  theme_minimal() +
+  # remove y axis
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  xlab("Parameter value") + 
+  theme(legend.title = element_blank(),
+        text=element_text(size=24)) + 
+  # manually set colors
+  scale_fill_manual(values = c("Baseline" = "#66c2a5", "Outbreak" = "#fc8d62", "Control" = "#8da0cb")) +
+  scale_linetype_manual(values = c("Baseline" = "solid", "Outbreak" = "dashed", "Control" = "dotted")) +
+  # remove gridlines
+  scale_x_continuous(labels = scales::label_number(accuracy = 0.001)) +
+  theme(panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+toilet_params <- abc_params_outbreak_control$unadj.values %>% 
+  as_tibble %>% 
+  dplyr::select(-`outbreak-start`, -`outbreak-end`, -`control-end`,
+                -`antibiotic-effect`,
+                -`random-colonisation`) %>% 
+  dplyr::select(contains("toilet")) %>% 
+  pivot_longer(cols=everything()) %>%
+  mutate(type = case_when(
+    str_starts(name, "o-") ~ "Outbreak",
+    str_starts(name, "c-") ~ "Control",
+    .default = "Baseline")) %>%
+  mutate(name = str_remove(name, "^o-|^c-")) %>%
+  mutate(name = str_replace_all(name, "-", " ")) %>%
+  mutate(name = str_to_title(name)) %>% 
+  # change type to ordered factor
+  mutate(type = factor(type, levels = c("Baseline", "Outbreak", "Control"))) %>%
+  ggplot(aes(x = value, ..scaled.., fill = type, linetype = type)) +
+  geom_density(alpha = 0.3) +
+  facet_wrap(~name, scales = "free_x") +
+  theme_minimal() + 
+  # remove y axis
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  xlab("Parameter value") + 
+  theme(legend.title = element_blank(),
+        text=element_text(size=24)) + 
+  # manually set colors
+  scale_fill_manual(values = c("Baseline" = "#66c2a5", "Outbreak" = "#fc8d62", "Control" = "#8da0cb")) +
+  scale_linetype_manual(values = c("Baseline" = "solid", "Outbreak" = "dashed", "Control" = "dotted")) +
+  # remove gridlines
+  scale_x_continuous(labels = scales::label_number(accuracy = 0.001)) +
+  theme(panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+# combine plots
+library(patchwork)
+general_params / toilet_params + plot_layout(heights = c(0.5, 1))
+```
+
+## Posterior predictive checks of the final model
+
+To validate the calibrated model, posterior predictive checks were performed by sampling parameter sets from the posterior distributions and running simulations to compare against the observed outbreak data. Using the posterior distributions as inputs to the simulation model, the model was able to generate scenarios of outbreaks that closely matched the observed data (see @fig-posterior-predictive-check). In these simulated scenarios, the pre-outbreak baseline rate was a median of `r round(pre_outbreak_posterior_predictive_sims_rates$rate_median, 2)` cases per 1000 patient days \[\acr{IQR} range `r round(pre_outbreak_posterior_predictive_sims_rates$rate_q_low, 2)`--`r round(pre_outbreak_posterior_predictive_sims_rates$rate_q_high, 2)`\], compared with the real rate of 1.25 cases per 1000 \[\acr{IQR} 0.94--1.56\]. During the outbreak period, simulations had a median rate of `r round(outbreak_uniform_sims_rates$rate_median, 2)` \[\acr{IQR} `r round(outbreak_uniform_sims_rates$rate_q_low, 2)`--`r round(outbreak_uniform_sims_rates$rate_q_high, 2)`\] cases, compared with the real median rate of 3.74 \[\acr{IQR} 3.32--4.41\] (see @fig-posterior-predictive-check). As in real outbreaks, the transmission dynamics were stochastic, with some simulations having a larger outbreak peak than others. This variability was due to different parameter combinations sampled from the posterior distributions, as well as randomness such as multiple infected patients admitted to the same room on the same day.
+
+```{r fig-abc-rates-retained-posteriors, include=FALSE}
+#| echo: false
+#| fig.cap: "Simulated rates of _C. difficile_ infection generated from the simulations retained after applying the rejection approximate Bayesian computation algorithm. The red line shows the true observed infection rates. The black solid line shows the median simulated rates; the dashed lines show the 25^th^ and 75^th^ quantiles."
+#| fig.width: 18
+#| fig.height: 8
+ggplot(long_observed_ss, aes(x = x, y = rates)) + geom_line(color = 'red') +
+  geom_line(data = sim_mean, aes(x = x, y = m)) +
+  geom_line(data = sim_mean, aes(x = x, y = q_high), linetype='dashed') +
+  geom_line(data = sim_mean, aes(x = x, y = q_low), linetype='dashed') + 
+  theme(text=element_text(size=24)) +
+  xlab("Date") + ylab("Rate (cases per 1000 patient days)")
+```
+
+```{r fig-consts-sims-coloured, include=FALSE}
+#| echo: false
+#| fig.width: 18
+#| fig.height: 8
+#| message: false
+uniform_sims_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(siminputrow, date_sim) %>%
+  summarise(rate = mean(rate)) %>%
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`siminputrow`))) +
+  geom_line() +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
+  guides(color="none")
+```
+
+```{r fig-consts-sims-mean-sd, include=FALSE}
+#| echo: false
+#| fig-cap: "Simulated rates of _C. difficile_ infection generated by using the posterior parameter distributions. Input parameter samples were generated by sampling the uniform distribution $U_[\\mu - \\sigma, \\mu + \\sigma]$, where $\\mu$ and $\\sigma$ are the mean and standard deviation of the parameter's posterior distribution respectively. The red line shows the true observed infection rates. The black solid line shows the median simulated rates; the dashed lines show the 25^th^ and 75^th^ quantiles."
+# plot but with mean and sd instead rather than individual
+uniform_sims_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(date_sim) %>%
+  summarise(m = median(rate),
+            q_high = quantile(rate, 0.75),
+            q_low = quantile(rate, 0.25),
+            .groups = "keep") %>%
+  ggplot() +
+  geom_line(aes(x = date_sim, y = m)) +
+  geom_line(aes(x = date_sim, y = q_high), linetype='dashed') +
+  geom_line(aes(x = date_sim, y = q_low), linetype='dashed') + 
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "red") +
+  guides(color="none") +
+  xlab("Date") + ylab("Rate (cases per 1000 patient days)")
+```
+
+```{r fig-single-outbreak-coloured, include=FALSE}
+#| echo: false
+#| fig.width: 18
+#| fig.height: 8
+#| message: false
+mean_sims_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  dplyr::select(!`siminputrow`) %>% 
+  pivot_longer(cols = !c(`random-seed`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(date_sim, `random-seed`) %>%
+  summarise(rate = mean(rate)) %>%
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`random-seed`))) +
+  geom_line() +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
+  guides(color="none")
+```
+
+```{r fig-single-outbreak, include=FALSE}
+mean_sims_mod <- mean_sims %>% 
+  mutate(prop_infected = `current-colonised` / `current-inpatients`,
+         current_not_infected = `current-inpatients` - `current-colonised`)
+mean_sims_mod %>% 
+  pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
+  ggplot(aes(x = `[step]`, y = value, color = compartment)) +
+  geom_line() +
+  labs(title = "Dynamics of Non-Infected and Infected Patients (Time-Varying Beta)",
+       x = "Time",
+       y = "Number of Patients",
+       color = "Compartment") 
+
+# single_outbreak_sum_stat <- mean_sims_mod %>% 
+#   group_by(`[step]`) %>%
+#   summarise(m = mean(prop_infected))
+```
+
+```{r fig-posterior-predictive-check, include=TRUE}
+#| echo: false
+#| fig-cap: "Posterior predictive check of the model. A total of 100 simulations were generated by sampling with replacement from the posterior parameter distributions after approximate Bayesian computation. Each simulation was run using different seeds. The shaded area shows the interquartile range (25^th^ to 75^th^ quantiles) of the simulated rates; the black line shows the median simulated rates; the red line shows the observed/true infection rates."
+posterior_predictive_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(date_sim) %>%
+  summarise(m = median(rate),
+            q_high = quantile(rate, 0.75),
+            q_low = quantile(rate, 0.25),
+            .groups = "keep") %>%
+  ggplot() +
+  geom_ribbon(aes(x = date_sim, ymin = q_low, ymax = q_high, fill = "Simulated 25th-75th quantiles"), alpha = 0.3) +
+  # geom_line(aes(x = date_sim, y = q_high, color = "Simulated 25th-75th quantiles"), alpha=0.3) +
+  # geom_line(aes(x = date_sim, y = q_low, color = "Simulated 25th-75th quantiles"), alpha=0.3) +
+  geom_line(aes(x = date_sim, y = m, color = "Median simulated rates")) +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates, color = "Observed rates")) +
+  scale_fill_manual(values = c("Simulated 25th-75th quantiles" = "blue"), name = "") +
+  scale_color_manual(values = c("Median simulated rates" = "black", "Observed rates" = "red", "Simulated 25th-75th quantiles" = "blue"), name = "") +
+  xlab("Date") + ylab("Rate (cases per 1000 patient days)") +
+  theme_minimal() + 
+  theme(legend.position = "top")
+```
+
+```{r fig-posterior-predictive-check-coloured, include=FALSE}
+#| echo: false
+#| message: false
+posterior_predictive_sim_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(siminputrow, date_sim) %>%
+  summarise(rate = mean(rate)) %>%
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`siminputrow`))) +
+  geom_line() +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
+  guides(color="none")
+```
+
+## Sensitivity analysis explored the impact of different \acr{IPC} intervetions
+
+To assess the impact of different infection control interventions, we performed a single-parameter local sensitivity analysis. We systematically varied one parameter at a time while holding all other parameters fixed at their posterior mean values, and measured the resulting number of nosocomial infections during the outbreak period. The parameters examined reflected modifiable infection control practices: antimicrobial prescription rates, the mean delay before transferring infected patients to single-occupancy side rooms, toilet cleaning frequency, and toilet cleaning effectiveness.
+
+The sensitivity analysis showed that the cleaning of toilets had a dramatic impact on the number of cases observed during the outbreak period, although the benefit appeared to plateau beyond a certain amount -- for example, cleaning toilets more than twice per day appeared to have marginal benefits (@fig-sensitivity-analysis). Comparatively, the antimicrobial prescription rate and the cohorting of patients into single-occupancy rooms after infection (controlled by the side room delay parameter), both had an almost linear relationship with the number of cases, albeit with lower overall impact than toilet cleaning.
+
+```{r fig-sensitivity-analysis, include=TRUE, eval=TRUE}
+#| echo: false
+#| fig-cap: "Sensitivity analysis of the model to changes in key infection control parameters. The y axis shows the total number of nosocomial infections during the outbreak period. Antimicrobial prescription rate represents the percentage of patients that were administered an antimicrobial during their admission. Side room delay is the mean number of days an infected patient remained in a bay before being moved to a side room. Toilet cleaning effect represents the effectiveness of cleaning in reducing toilet contamination (100% = complete removal of contamination; 0% = no cleaning effect). Toilet cleaning rate represents the number of times toilets were cleaned per day, on average."
+list(
+  abx_prescription_rate    = sens_abx_prescription_outbreak_cases,
+  proportion_redistributed = sens_prop_redist_outbreak_cases,
+  toilet_cleaning_rate     = sens_toilet_cleaning_rate_outbreak_cases,
+  toilet_cleaning_effect   = sens_toilet_cleaning_effect_outbreak_cases
+) %>%
+  bind_rows() %>% 
+  pivot_longer(
+    cols = starts_with("c-"),
+    names_to = "param",
+    values_drop_na = TRUE
+  ) %>% 
+  group_by(param, value) %>% 
+  summarise(
+    med_cases = median(`outbreak-cases`),
+    q_high    = quantile(`outbreak-cases`, 0.75),
+    q_low     = quantile(`outbreak-cases`, 0.25),
+    .groups    = "keep"
+  ) %>% 
+  mutate(
+    # convert antibiotic prescription rate to 0-100 scale, leave others unchanged
+    # value = if_else(param == "c-antibiotic-prescription-rate", value * 100, value),
+    param = case_when(
+      param == "c-antibiotic-prescription-rate" ~ "Antimicrobial prescription rate",
+      param == "c-side-room-delay-mean"     ~ "Side room delay mean (days)",
+      param == "c-toilet-cleaning-rate"         ~ "Toilet cleaning rate (per day)",
+      param == "c-toilet-cleaning-effect"       ~ "Toilet cleaning effect",
+      TRUE                                      ~ param
+    )
+  ) %>% 
+  ggplot(aes(x = value)) + 
+  geom_ribbon(aes(ymin = q_low, ymax = q_high, fill = "Simulated 25th-75th quantiles"), alpha = 0.3) +
+  geom_line(aes(y = med_cases, color = "Median simulated rates"), linewidth = 0.7) +
+  facet_wrap(~ param, scales = "free") +    # free_x required to use facetted_pos_scales
+  # apply percentage labels and a per-facet x-title only for the antibiotic facet
+  ggh4x::facetted_pos_scales(
+    x = list(
+      # LHS is evaluated against the facet layout; RHS is the scale to use for matching facets
+      param %in% c("Antimicrobial prescription rate", "Toilet cleaning effect") ~
+        scale_x_continuous(
+          labels = scales::label_percent(scale = 100)   # data already on 0-100 so use scale=1
+        )
+    )
+  ) +
+  # fallback labels (these apply to facets that did not get a custom scale)
+  labs(x = "Parameter value",
+       y = "Number of infected patients") +
+  scale_fill_manual(values = c("Simulated 25th-75th quantiles" = "blue"), name = "") +
+  scale_color_manual(values = c("Median simulated rates" = "black"), name = "") +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+```{r fig-sensitvity-pre-outbreak-abx, include=FALSE}
+#| echo: false
+#| fig-cap: "Sensitivity analysis of the model to changes in the pre-outbreak antimicrobial prescription rate. The y axis shows the total number of nosocomial infections during the outbreak period."
+sens_abx_prescription_pre_outbreak_outbreak_cases %>% 
+  group_by(`antibiotic-prescription-rate`) %>% 
+  summarise(mean_cases = mean(`outbreak-cases`),
+            sd_cases = sd(`outbreak-cases`)) %>% 
+  ggplot(aes(x = `antibiotic-prescription-rate`, y = mean_cases)) +
+  geom_line() + 
+  # add sd
+  geom_line(data = . %>% 
+              mutate(upper = mean_cases + sd_cases,
+                     lower = mean_cases - sd_cases),
+            aes(y = upper), linetype = "dashed") +
+  geom_line(data = . %>% 
+              mutate(upper = mean_cases + sd_cases,
+                     lower = mean_cases - sd_cases),
+            aes(y = lower), linetype = "dashed") +
+  xlab("Antimicrobial prescription rate") +
+  ylab("Number of infected patients")
+```
+
+```{r run-deterministic-model, eval=FALSE, include=FALSE, cache=TRUE}
+# Parameters and time-dependent functions
+parameters <- list(
+  # p = 1 - unique(mean_sims$`community-colonisation-rate`),      # Proportion of non-infected admissions
+  A = 50        # Total admission/discharge rate
+)
+# 
+
+single_seeds <- unique(mean_sims$`random-seed`)
+single_outbreak_one_seed <- mean_sims_mod %>% 
+  filter(`random-seed` == single_seeds[3])
+
+target_baseline_rate <- single_outbreak_one_seed %>%
+  filter(`[step]` > 30 & `[step]` < 200) %>%
+  summarise(prop_infected = mean(prop_infected)) %>% 
+  pull(prop_infected)
+target_outbreak_rate <- single_outbreak_one_seed %>%
+  filter(`[step]` > 1100 & `[step]` < 1200) %>%
+  summarise(prop_infected = mean(prop_infected)) %>% 
+  pull(prop_infected)
+
+randomLHS <- randomLHS(10000, 5)
+
+baselinerate <- qunif(randomLHS[, 1], 0.0005, 0.01)
+outbreakrate <- qunif(randomLHS[, 2], 0.0005, 0.01)
+baselinecolonisation <- qunif(randomLHS[, 3], 0.9, 0.99)
+outbreakcolonisation <- qunif(randomLHS[, 4], 0.9, 0.99)
+r <- qunif(randomLHS[, 5], 0.0001, 0.001)
+# rate_grid <- expand.grid(b_base = baselinerate,
+#                          b_out = outbreakrate,
+#                          c_base = baselinecolonisation,
+#                          c_out = outbreakcolonisation,
+#                          r = r)
+rate_grid <- data.frame(b_base = baselinerate,
+                        b_out = outbreakrate,
+                        c_base = baselinecolonisation,
+                        c_out = outbreakcolonisation,
+                        r = r)
+rate_grid <- rate_grid %>% 
+  filter(b_base < b_out & c_base > c_out) %>% 
+  slice_sample(n = 300)
+
+# Time-varying beta function (example: sinusoidal variation over time)
+beta_function <- function(t, baseline_rate, outbreak_rate) {
+  if (t > unique(mean_sims$`outbreak-start`) &
+      t < unique(mean_sims$`outbreak-end`)) {
+    return (outbreak_rate)
+  }
+  return (baseline_rate)
+}
+
+run_to <- max(mean_sims$`[step]`)
+
+# Initial conditions
+total_patients <- unique(single_outbreak_one_seed$`current-inpatients`)
+init_N <- unique(single_outbreak_one_seed$`community-colonisation-rate`) * total_patients
+init_I <- total_patients - init_N
+initial_state <- c(N = init_N, I = init_I)  # Initial populations of non-infected and infected patients
+time <- seq(0, run_to, by = 1)         # Time steps
+dt <- 1                             # Time step size
+
+plan(multisession)
+ode_sims <- 
+  
+    furrr::future_pmap_dfr(rate_grid,
+          \(b_base, b_out, c_base, c_out, r) {
+            N <- numeric(length(time))
+            I <- numeric(length(time))
+            N[1] <- initial_state["N"]
+            I[1] <- initial_state["I"]
+  
+            # Euler method for numerical integration with time-varying parameters
+            for (t in 1:(length(time) - 1)) {
+              # Current beta value
+              beta_t <- beta_function(time[t], b_base, b_out)
+              p_t <- beta_function(time[t], c_base, c_out)
+              
+              # Total population at current time
+              total <- N[t] + I[t]
+              
+              # Proportions of non-infected and infected
+              prop_N <- ifelse(total > 0, N[t] / total, 0)
+              prop_I <- ifelse(total > 0, I[t] / total, 0)
+              
+              # Calculate derivatives
+              dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t]  - r * N[t]
+              dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t]  + r * N[t]
+              
+              # Update populations using Euler's method
+              N[t + 1] <- N[t] + dN * dt
+              I[t + 1] <- I[t] + dI * dt
+            }
+            data.frame(baseline = mean(I[31:200] / ( N[31:200] + I[31:200] )),
+                       outbreak = mean(I[1100:1200] / ( N[1100:1200] + I[1100:1200] )))
+          }, .progress = T)
+
+
+abc_single_outbreak <- abc(c(target_baseline_rate, target_outbreak_rate), rate_grid, ode_sims[c("baseline", "outbreak")], tol=0.025, method='rejection')
+
+
+baselinerate <- mean(abc_single_outbreak$unadj.values[, "b_base"])
+outbreakrate <- mean(abc_single_outbreak$unadj.values[, "b_out"])
+
+# baselinecolonisation <- 1 - unique(mean_sims$`community-colonisation-rate`)
+# outbreakcolonisation <- 1 - unique(mean_sims$`o-community-colonisation-rate`)
+baselinecolonisation <- mean(abc_single_outbreak$unadj.values[, "c_base"])
+outbreakcolonisation <- mean(abc_single_outbreak$unadj.values[, "c_out"])
+r <- mean(abc_single_outbreak$unadj.values[, "r"])
+
+# Initialize vectors to store results
+N <- numeric(length(time))
+I <- numeric(length(time))
+N[1] <- initial_state["N"]
+I[1] <- initial_state["I"]
+
+# Euler method for numerical integration with time-varying parameters
+for (t in 1:(length(time) - 1)) {
+  # Current beta value
+  beta_t <- beta_function(time[t], baselinerate, outbreakrate)
+  p_t <- beta_function(time[t], baselinecolonisation, outbreakcolonisation)
+  
+  # Total population at current time
+  total <- N[t] + I[t]
+  
+  # Proportions of non-infected and infected
+  prop_N <- ifelse(total > 0, N[t] / total, 0)
+  prop_I <- ifelse(total > 0, I[t] / total, 0)
+  
+  # Calculate derivatives
+  dN <- p_t * parameters$A - parameters$A * prop_N - beta_t * N[t]  - r * N[t]
+  dI <- (1 - p_t) * parameters$A - parameters$A * prop_I + beta_t * N[t]  + r * N[t]
+  
+  # Update populations using Euler's method
+  N[t + 1] <- N[t] + dN * dt
+  I[t + 1] <- I[t] + dI * dt
+}
+
+# Combine results into a data frame for plotting
+output_df <- data.frame(
+  time = time,
+  N = N,
+  I = I
+)
+
+output_df <- filter(output_df, time > 31)
+output_long <- reshape2::melt(output_df, id = "time")
+```
+
+```{r load-stochastic-sd-model, include=FALSE}
+Rcpp::sourceCpp("../models/sd_stochastic.cpp")
+```
+
+```{r run-stochastic-sd-model, include=FALSE, cache=TRUE, cache.lazy=FALSE}
+set.seed(42)
+# Sampling configuration: 'lhs' for Latin Hypercube (default) or 'iid' for independent random draws
+sd_sampling_method <- "iid"  # change to "iid" for independent sampling
+n_pool <- 10000
+sd_dims <- 11
+if (sd_sampling_method == "lhs") {
+  randomLHS_sd <- randomLHS(n_pool, sd_dims)
+} else {
+  # independent uniform draws in [0,1]
+  randomLHS_sd <- matrix(runif(n_pool * sd_dims), ncol = sd_dims)
+}
+# Set SD timepoint priors similar to variable_pre_outbreak.R (no ABM dependency)
+eicm_start <- as.numeric(difftime(ymd('2004-11-15'), ymd('2002-01-01'), units = 'days'))
+outbreak_start_center <- as.numeric(difftime(ymd('2004-10-01'), ymd('2002-01-01'), units = 'days'))
+outbreak_end_center   <- as.numeric(difftime(ymd('2005-05-31'), ymd('2002-01-01'), units = 'days'))
+control_end_center    <- outbreak_end_center + 90
+sd_param_grid <- data.frame(init_population = rep(610, 1000),
+                            A = 68,
+                            r = qunif(randomLHS_sd[, 3], 0.001, 0.01),
+                            baseline_beta = qunif(randomLHS_sd[, 4], 0.0001, 0.01),
+                            baseline_lambda = qunif(randomLHS_sd[, 5], 0.001, 0.1),
+                            outbreak_beta = qunif(randomLHS_sd[, 6], 0.0001, 0.01),
+                            outbreak_lambda = qunif(randomLHS_sd[, 7], 0.001, 0.1),
+                            control_beta = qunif(randomLHS_sd[, 8], 0.0001, 0.01),
+                            outbreak_start = qunif(randomLHS_sd[, 9], outbreak_start_center - 90, outbreak_start_center + 90),
+                            outbreak_end   = qunif(randomLHS_sd[, 10], outbreak_end_center - 90, outbreak_end_center + 90),
+                            control_start  = rep(eicm_start, 1000),
+                            control_end    = qunif(randomLHS_sd[, 11], control_end_center - 30, control_end_center + 30),
+                            n_days = rep(2585, 1000))
+
+sd_param_grid <- sd_param_grid %>% 
+  # filter(baseline_beta < outbreak_beta & baseline_lambda < outbreak_lambda) %>% 
+  # slice_sample(n = 10000) %>% 
+  mutate(param_row = row_number())
+n_seeds <- 5
+sd_sims <- 
+  pmap_dfr(sd_param_grid,
+  \(init_population, A, r, baseline_beta, baseline_lambda, outbreak_beta, outbreak_lambda, control_beta, outbreak_start, outbreak_end, control_start, control_end, n_days, param_row) {
+          map(1:n_seeds,
+              \(seed) {
+                set.seed(seed)
+      sd_stochastic(init_population=init_population,
+          A=A,
+          r=r,
+          baseline_beta = baseline_beta,
+          baseline_lambda = baseline_lambda,
+          outbreak_beta = outbreak_beta,
+          outbreak_lambda = outbreak_lambda,
+          control_beta = control_beta,
+          outbreak_start = outbreak_start,
+          control_start = control_start,
+          outbreak_end = outbreak_end,
+          control_end = control_end,
+          n_days = n_days) %>% 
+                  mutate(`random-seed` = seed,
+                         param_row = param_row)
+              }) %>% 
+            bind_rows()
+        }, .progress = T)
+
+sd_sims <- sd_sims %>% 
+  filter(day > 31) %>% 
+  group_by(param_row, `random-seed`) %>% 
+  # add dates
+  mutate(date_sim = seq(from = ymd("2002-01-01"),
+                        by = "1 day",
+                        length.out = n()))
+
+# rates by month
+sd_sims_rates <- sd_sims %>% 
+  group_by(param_row, `random-seed`) %>% 
+  mutate(year = year(date_sim),
+         month = month(date_sim)) %>%
+  group_by(param_row, `random-seed`, year, month) %>%
+  # calculate rate of hosp_cases per 1000 patient days
+  summarise(rate = (sum(hosp_cases) / sum(S + I)) * 1000,
+            date_sim = first(date_sim))
+
+# collapse to mean rates by seed
+sd_sims_rates_mean <- sd_sims_rates %>% 
+  group_by(param_row, year, month) %>%
+  summarise(rate = mean(rate),
+            date_sim = first(date_sim))
+
+# pivot wider to get ready for abc
+
+sd_sumstats <- sd_sims_rates_mean %>% 
+  ungroup() %>% 
+  dplyr::select(-year, -month) %>%
+  filter(date_sim <= max(salgado$x)) %>% 
+  pivot_wider(names_from = date_sim, values_from = rate)
+
+# abc
+abc_sd <- abc(salgado$rates,
+              dplyr::select(sd_param_grid, -param_row, n_days),
+              dplyr::select(sd_sumstats, -param_row), tol=0.0025, method='rejection')
+
+# posterior predictive checks
+posterior_check_params <- abc_sd$unadj.values %>% 
+  as_tibble() %>% 
+  slice_sample(n = 100, replace = TRUE) %>% 
+  mutate(seed = sample(1:1000, n(), replace = FALSE))
+
+posterior_predictive_sim_sd <- 
+  pmap_dfr(posterior_check_params,
+    \(init_population, A, r, baseline_beta, baseline_lambda, outbreak_beta, outbreak_lambda, control_beta, outbreak_start, outbreak_end, control_start, control_end, n_days, seed) {
+      set.seed(seed)
+    sd_stochastic(init_population = init_population,
+      A = A,
+      r = r,
+      baseline_beta = baseline_beta,
+      baseline_lambda = baseline_lambda,
+      outbreak_beta = outbreak_beta,
+      outbreak_lambda = outbreak_lambda,
+      control_beta = control_beta,
+      outbreak_start = outbreak_start,
+      control_start = control_start,
+      outbreak_end = outbreak_end,
+      control_end = control_end,
+      n_days = n_days) %>% 
+        mutate(`random-seed` = seed) %>% 
+        bind_rows()
+        }, .progress = T)
+
+posterior_predictive_sim_sd <- posterior_predictive_sim_sd %>%
+  filter(day > 31) %>% 
+  group_by(`random-seed`) %>% 
+  # add dates
+  mutate(date_sim = seq(from = ymd("2002-01-01"),
+                        by = "1 day",
+                        length.out = n()))
+
+posterior_predictive_sim_sd_rates <- posterior_predictive_sim_sd %>%
+  group_by(`random-seed`) %>% 
+  mutate(year = year(date_sim),
+         month = month(date_sim)) %>%
+  group_by(`random-seed`, year, month) %>%
+  # calculate rate of hosp_cases per 1000 patient days
+  summarise(rate = (sum(hosp_cases) / sum(S + I)) * 1000,
+            date_sim = first(date_sim))
+
+```
+
+```{r fig-single-outbreak-deterministic-one-plot, include=FALSE, eval=FALSE}
+#| echo: false
+#| message: false
+#| fig.cap: "Comparison of infection rates produced by the agent-based model and the deterministic model. The r"
+single_outbreak_one_seed %>% 
+  pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
+  filter(`[step]` > 31) %>%
+  group_by(compartment, `[step]`) %>% 
+  summarise(m = mean(value)) %>% 
+  ggplot(aes(x = `[step]`, y = m, color = compartment)) +
+  geom_line() +
+  labs(title = "Dynamics of Non-Infected and Infected Patients (Time-Varying Beta)",
+       x = "Time",
+       y = "Number of Patients",
+       color = "Compartment") +
+  geom_line(data = output_df, aes(x = time, y = N), color = "blue", linetype = "dashed") + 
+  geom_line(data = output_df, aes(x = time, y = I), color = "red", linetype = "dashed") +
+  xlim(500, 2000)
+```
+
+```{r fig-single-outbreak-deterministic-faceted, include=FALSE, eval=FALSE}
+#| echo: false
+#| message: false
+#| fig.cap: "Comparison of infection rates produced by the agent-based model and the deterministic model. The parameters for the deterministic model were determined using approximate Bayesian computation, using the output from a single run of the agent-based model as a reference."
+output_df_long <- output_df %>% 
+  pivot_longer(cols = c(N, I), names_to = "compartment", values_to = "value") %>% 
+  mutate(sim_type = "Deterministic") %>% 
+  mutate(compartment = case_when(
+    compartment == "N" ~ "Not infected",
+    compartment == "I" ~ "Infected"
+  ))
+
+single_outbreak_one_seed %>% 
+  pivot_longer(cols = c(`current-colonised`, `current_not_infected`), names_to = "compartment", values_to = "value") %>%
+  filter(`[step]` > 31) %>%
+  group_by(compartment, `[step]`) %>% 
+  summarise(m = mean(value)) %>% 
+  mutate(sim_type = "ABM") %>% 
+  rename(time = `[step]`, value = m) %>%
+  mutate(compartment = case_when(
+    compartment == "current_not_infected" ~ "Not infected",
+    compartment == "current-colonised" ~ "Infected"
+  )) %>%
+  bind_rows(output_df_long) %>% 
+  ggplot(aes(x = time, y = value, color = compartment)) +
+  geom_line() +
+  facet_wrap(~ sim_type, nrow = 2) +
+  labs(x = "Time",
+       y = "Number of Patients",
+       color = "Compartment/Agent state")
+  
+```
+
+```{r fig-abc-sd-posteriors, include=FALSE, dev='png'}
+#| echo: false
+#| out.height: "400px"
+#| fig.cap: "Changes in SD model parameters across baseline, outbreak, and control periods. Density plots show the posterior distributions of key parameters after calibration using approximate Bayesian computation."
+param_names_sd <- c(
+  "R" = "Community infection rate (_r_)",
+  "Beta" = "Transmission rate (\U03B2)",
+  "Lambda" = "Toilet contamination rate (\U03BB)"
+)
+sd_posterior_params_abc <- abc_sd$unadj.values
+colnames(sd_posterior_params_abc) <- names(dplyr::select(sd_param_grid, -param_row))
+sd_posterior_params_abc %>% 
+  as.data.frame() %>% 
+  # select only parameter columns (exclude timepoints)
+  dplyr::select(r, baseline_beta, outbreak_beta, control_beta, baseline_lambda, outbreak_lambda) %>% 
+  pivot_longer(cols = everything(), names_to = "name", values_to = "value") %>% 
+  mutate(type = case_when(
+    str_starts(name, "outbreak_") ~ "Outbreak",
+    str_starts(name, "control_")  ~ "Control",
+    TRUE                           ~ "Baseline"
+  )) %>% 
+  mutate(name = str_remove(name, "^baseline_|^outbreak_|^control_")) %>% 
+  mutate(name = str_replace_all(name, "_", " ")) %>% 
+  mutate(name = str_to_title(name)) %>% 
+  mutate(type = factor(type, levels = c("Baseline", "Outbreak", "Control"))) %>%
+  ggplot(aes(x = value, ..scaled.., fill = type, linetype = type)) +
+  geom_density(alpha = .3) +
+  facet_wrap(~ name, scales = "free_x", labeller = as_labeller(param_names_sd),
+             ncol = 1) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = ggtext::element_markdown()) +
+  xlab("Parameter value") + 
+  theme(legend.title = element_blank(),
+        legend.position = "top"
+        # ,text=element_text(size=24)
+        ) + 
+  scale_fill_manual(values = c("Baseline" = "#66c2a5", "Outbreak" = "#fc8d62", "Control" = "#8da0cb")) +
+  scale_linetype_manual(values = c("Baseline" = "solid", "Outbreak" = "dashed", "Control" = "dotted")) +
+  scale_x_continuous(labels = scales::label_number(accuracy = 0.001)) +
+  theme(panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+```
+
+```{r fig-abc-sd-simulated-rates, include=FALSE}
+#| echo: false
+#| fig.cap: "Simulated rates of _C. difficile_ infection generated from the simulations retained after applying the rejection approximate Bayesian computation algorithm to the stochastic deterministic model. The red line shows the true observed infection rates. The black solid line shows the median simulated rates; the dashed lines show the 25^th^ and 75^th^ quantiles."
+
+abc_sd$ss %>% as.matrix %>% 
+  as.data.frame() %>% 
+  pivot_longer(cols = everything(), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(date_sim) %>%
+  summarise(m = median(rate),
+            q_high = quantile(rate, 0.75),
+            q_low = quantile(rate, 0.25),
+            .groups = "keep") %>%
+  ggplot() +
+  geom_line(aes(x = date_sim, y = m)) +
+  geom_line(aes(x = date_sim, y = q_high), linetype='dashed') +
+  geom_line(aes(x = date_sim, y = q_low), linetype='dashed') + 
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "red") +
+  guides(color="none") +
+  xlab("Date") + ylab("Rate (cases per 1000 patient days)")
+```
+
+```{r fig-abc-sd-posterior-predictive-check, include=FALSE, eval=FALSE}
+#| echo: false
+#| fig.cap: "Posterior predictive check of the stochastic deterministic model. Simulations were generated by sampling with replacement from the posterior parameter distributions after approximate Bayesian computation. Each simulation was run using different seeds. The red line shows the true observed infection rates. The black solid line shows the median simulated rates; the dashed lines show the 25^th^ and 75^th^ quantiles."
+
+```
+
+# Discussion
+
+\acr[case=sentence, first_use=true]{IPC} is the practice of preventing the spread of infectious diseases in healthcare settings [@worldhealthorganizationGuidelinesCoreComponents2016]. Central to this is the operational management of an outbreak, defined as an increase in the number of infected cases above the expected rate. This research describes the design and calibration of an \acr{ABM} that simulates the spread of infection in a hospital setting. The primary motivation of this work is to assess the impact of different infection prevention interventions (such as change in practice) on rates of infection. The model was designed to simulate a paradigm of infections that are characterised by faecal-oral transmission, with the risk increasing in the presence of the selective pressure introduced by antimicrobial therapy. Since some of the pathogens that fit this definition are associated with long-term colonisation and risk of onward transmission of the gastro-intestinal tract (without the presence of clinical illness), it was assumed that infected patients remained colonised during their admission. The model can be used to simulate any infection with these characteristics, such as: \acr{CDI}, \acr{VRE}, \acr{ESBL}, and \acr{CPE}.
+
+The model was designed to simulate the spread of infection at a baseline (or background) rate, followed by an outbreak period of increased transmission, in turn followed by a period of enhanced infection control to return back to the baseline rate. The model was calibrated to a report of a _C. difficile_ outbreak reported by @salgadoAnalysisOutbreakClostridium2009. Approximate Bayesian computation was used to calibrate the model to the rates of infection reported in the paper. When model inputs were drawn from the posterior distributions, the model was able to simulate plausible outbreak scenarios that were similar to the observed rates. A sensitivity analysis was performed over parameters that represent infection control interventions (such as the frequency of toilet cleaning), demonstrating the possible applications of this model for informing operational infection control practices. Interventions that controlled the spread of infection, such as the cohorting of patients to single-occupancy beds, and the increased frequency of toilet cleaning, led to a reduced number of cases during the outbreak period.
+
+To simulate outbreaks and periods of enhanced infection control, the model was designed to change parameters at discrete time points. For example, the rate of antimicrobial prescriptions was higher during the outbreak period, promoting the spread of infection. Later, the prescription rate was reduced to help control the outbreak. The NetLogo model implementation was designed so that a fixed parameter set was used as an input, and the outbreak and enhanced IPC parameters were only used during their respective periods. In effect, all input parameters were provided as a fixed input -- some parameters were only used by the simulation at defined discrete intervals. This approach may be unsuitable for modelling of transmission without a clear outbreak pattern -- more complex implementations of time-varying parameters could be explored.
+
+Although \acrs{ABM} have been shown to be useful for simulating and modelling infectious disease transmission, they have limitations. The model described here is a simplification of what is likely to be a highly intricate and complicated system. For example, transmission was assumed to be 'random' or acquired through the use of a contaminated toilet. In reality, other transmission pathways likely exist, such as through contact with staff or contaminated bedding. Antimicrobial exposure was considered to be a binary risk factor for an agent becoming infected. Antimicrobial class and duration of exposure are factors that are not accounted for in this model. An \acr{ABM} that captures all the details that influence the spread of infection in a hospital setting is unlikely to be feasible, due to the computational challenge and the large number of parameters that would need to be estimated. A reasonable approach is for the model to be as simple as possible, while still capturing the features required to answer the research question [@sunSimpleComplicatedAgentbased2016]. Another limitation of \acrs{ABM} is the requirement for detailed data to calibrate and validate the model. Here, the data used were primarily from a retrospective descriptive dataset. As such, information on certain parameters was not available (e.g., the proportion of patients that were administered an antimicrobial during their admission) -- these parameters were estimated from the literature. An important future direction would be to prospectively inform and validate the model with data collected specifically for this purpose.
+
+\acrs[case=sentence, first_use]{ABM} that simulate the hospital transmission of pathogens transmitted through the faecal-oral route, including _C. difficile_ and vancomycin-resistant _Enterococci_, have been reported previously [@codellaAgentbasedSimulationModel2015; @debosckerAgentbasedModelSimulate2021]. Some models have also explored the impact of one or more infection control interventions on the spread of infection [@barkerInterventionsReduceIncidence2018; @rubinSimulationBasedAssessmentStrategies2013]. Our model builds on these works by designing and calibrating the model to an outbreak and enhanced \acr{IPC} period. The motivation for this was to design a model that can be used to support infection and prevention teams in the following: 1) preparedness for outbreak situations; and 2) decision-making on the implementation of infection control interventions during an outbreak. The latter is especially important in low resource settings, where the capacity to implement multiple IPC measures may be limited and the value of individual measures if often poorly understood [@lewnardBurdenBacterialAntimicrobial2024]. \acrs{ABM} such as our model could help prioritise cost-effective interventions. Furthermore, the model was designed to be pathogen-agnostic to allow for a stepwise approach for future work -- pathogen-specific features (e.g., diagnostic and laboratory testing) can be added as required. The choice of NetLogo as a platform allows for the model to be used interactively by non-programmers, such as infection control practitioners; the model can also be modified and extended with the relatively simple NetLogo language.
+
+In conclusion, the \acr{ABM} described here can simulate outbreaks of infection in a hospital setting, and estimate the impact of different infection control interventions on the number of nosocomial infections. Although the model was calibrated to a _C. difficile_ outbreak, it can be adapted for use in other pathogens that are transmitted through the faecal-oral route under antimicrobial selective pressure, such as vancomycin-resistant _Enterococci_ and extended-spectrum beta-lactamase-producing Enterobacterales.
+
+# Methods
+
+## \acr[case=sentence, first_use]{ABM} description
+
+An \acr{ABM} was implemented using NetLogo [@wilenskyu.NetLogo1999]. Briefly, the simulation started by building a virtual hospital with a configurable high-level structure, defined by its number of wards, beds per ward, and proportion of bedspaces sharing toilet facilities. Next, the hospital was populated with patients, each having an infected or non-infected state, defined as:
+
+$$
+x_i(t) \in \{0, 1\},
+$$
+
+where:
+
+-   $t \in \mathbb{N}_0 = \{0, 1, 2, \ldots\}$ is the time step (in days),
+-   $x_i(t) = 0$ if patient $i$ is not infected at time $t$,
+-   $x_i(t) = 1$ if patient $i$ is infected at time $t$.
+
+On admission, each patient had a probability being infected, representing the community infection rate. The simulation determined the infection status of each patient on admission using Bernoulli trials:
+
+$$
+X_{\text{community}, i} \sim \text{Bernoulli}(\lambda),
+$$
+
+where $X_{\text{community}, i} = 1$ if patient $i$ is infected on admission, and 0 otherwise.
+
+Since the simulation's target diseases were associated with long term colonisation and prolonged risk of transmission to other patients, it was assumed that infection was not reversible during the simulation, i.e., that infected patients remained infected until discharge. At each time increment, the probability of a non-infected patient $i$ acquiring infection (i.e., transitioning from a non-infected to infected state)---$P_i(t)$---depended on: 1) a baseline risk of *de novo* infection; and 2) the usage of contaminated toilets. In this context, *de novo* infection was assumed to capture routes of transmission outwith toilet use, and infection which was not directly related to a traceable transmission event. The probability of infection through these two routes---$P_{\text{de novo}, i}(t)$ and $P_{\text{toilet}, i}(t)$, respectively---were independent; therefore, the probability of patient $i$ acquiring infection at time $t$ was given by:
+
+$$
+P_i(t) = 1 - \left[ (1 - P_{\text{de novo}, i}(t)) \cdot (1 - P_{\text{toilet}, i}(t)) \right],
+$$
+
+where:
+
+* $(1- P_{\text{de novo}, i}(t))$ is the probability of patient $i$ not acquiring infection *de novo* at time $t$,
+
+* $(1 - P_{\text{toilet}, i}(t))$ is the probability of patient $i$ not acquiring infection from a contaminated toilet at time $t$, and
+
+* $[(1 - P_{\text{de novo}, i}(t)) \cdot (1 - P_{\text{toilet}, i}(t))]$ is the probability of patient $i$ not acquiring infection at time $t$.
+
+The individual probabilities were defined as:
+
+$$ 
+P_{\text{de novo}, i}(t) = 1 - \text{exp}{ {( - r_0 \cdot T_i(t) )} },
+$$
+
+
+$$
+P_{\text{toilet}, i}(t) = 1 - \text{exp}{ \left( {-\sum_{j=0}^{U_i(t)}[C_i(t) \cdot T_i(t)]} \right) }
+$$
+
+where:
+
+-   $r_0$ is the baseline/*de novo* risk of infection,
+
+-   $U_i(t)$ is the number of times patient $i$ frequents the toilet within the time interval $t$,
+
+-   $C_i(t)$ is the contamination level of the toilet used by patient $i$ at time $t$,
+
+-   $T_i(t)$ is the treatment multiplier that depends on antimicrobial therapy and is defined as:
+
+    $$
+    T_i(t) = \begin{cases}
+      m & \text{if patient $i$ on antimicrobial therapy at time $t$} \\
+      1 & \text{otherwise, and}
+    \end{cases}
+    $$
+
+-   $m$ is the increased (or decreased) relative risk of infection due to antimicrobial therapy, where $m>0$.
+
+In the \acr{ABM} implementation, Bernoulli trials were conducted to determine if a patient became infected at each time step $t$:
+
+$$
+X_{\text{hospital}, i}(t) \sim \text{Bernoulli}(P_i(t))
+$$
+
+where $X_{\text{hospital}, i}(t) = 1$ if patient $i$ acquires infection during their hospital stay at time $t$, and 0 otherwise.
+
+During the simulation, the contamination level of each toilet increased when an infected patient used it, and decreased when the toilet was cleaned. 
+
+Infected patients were moved to single-occupancy rooms (side rooms) after infection. To capture delays in moving patients into side rooms (which can be due to delays in diagnosis, and/or lack of available side rooms), the simulation included an optional parameter that samples the delay from a Poisson distribution with a configurable mean (in days). Once the infected patient completed their delay, they became eligible to move to the next available side room. To implement this, the simulation used a \acr{FIFO} queue to track infected patients waiting for a side room. While direct patient swaps were possible (i.e., swapping a non-infected patient in a side room with an infected patient waiting for a side room), more complex swaps involving multiple patients were not implemented.
+
+Each patient's admission duration was sampled from a Poisson distribution with a configurable mean (in days). Upon discharge, patients were removed from the simulation; each patient was then replaced with new patient admission. Although real hospitals do not operate at 100% occupancy at all times, this assumption was made to simplify analysis of the model's output.
+
+## Outbreak generation {#sec-outbreak-generation}
+
+To simulate the generation of outbreaks and their subsequent control through enhanced infection prevention and control (IPC) measures, the \acr{ABM} optionally changed its parameters at four configurable discrete time points within the simulation: 1) onset of outbreak; 2) start of enhanced IPC measures; 3) end of outbreak; and 4) end of enhanced \acr{IPC} measures. By changing parameters, the model simulated the conditions that led to increased transmission of infection, followed by \acr{IPC} measures that reduced transmission.
+
+## Data sources
+
+Data from a hospital \acr{CDI} outbreak reported by Salgado et al was used to parameterise and calibrate the model [@salgadoAnalysisOutbreakClostridium2009]. Raw data from this study were not available, therefore, the Engauge digitizer software was used to extract observed CDI rates from the manuscript's figures [@mitchellEngaugeDigitizer2020].
+
+## Model calibration {#sec-model-calibration}
+
+Rejection sampling \acr{ABC} was employed to fit the \acr{ABM} to the observed outbreak data [@sunnakerApproximateBayesianComputation2013]. Model input parameters were broadly grouped into: 1) toilet (e.g., number of times toilet used per day, level of contamination after use or cleaning); 2) admission (e.g., community infection rate, antimicrobial prescription rate); and 3) infection parameters (e.g., relative risk increase of antimicrobial therapy on infection).
+
+The outputs of the model included: 1) number of patients admitted to the hospital; 2) number of patients with community-acquired infection; 3) number of patients with hospital-acquired (nosocomial) infection. The simulation was run with each unit of time corresponding to one day; therefore, the model's outputs were for each simulated day.
+
+Priors were extracted from existing literature; flat priors with limits were used when data were unavailable. A summary of the priors used is available in @tbl-priors. The hospital design was configured based on UK standards for hospital inpatient facilities [@departmentofhealthHealthBuildingNote2013]. This consisted of 600 beds in 24 wards, of which 376 (63%) were single-occupancy rooms. Each ward had a median capacity of 24 patients, and a median of two multi-occupancy bay (each of which had four patients).
+
+| Model input name | Probability distribution | Distribution parameters | Description | Reference |
+|---------------|---------------|---------------|---------------|---------------|
+| Baseline (pre-outbreak) antimicrobial prescription rate | Constant | 49.9% | Proportion of patients administered antimicrobials during admission | @versportenAntimicrobialConsumptionResistance2018 |
+| Admission duration | Poisson | $\lambda = 4.6  \text{ days}$ |  | @levitkryankelixhauserastrangesekassedccoffeyrHCUPFactsFigures2007 |
+| Community infection rate | Uniform | $a = 0.01, b = 0.1$ |  | @crobachUnderstandingClostridiumDifficile2018 |
+| Antimicrobial effect ($m$) | Uniform | $a = 1.31, b = 1.87$ | Odds ratio for effect of antimicrobial therapy on risk of hospital-acquired CDI | @slimingsAntibioticsHospitalacquiredClostridium2014 |
+| Baseline infection rate ($r_0$) | Uniform | $a=2.8, b=12.1$ | Per 10,000 patient-days | @marraIncidenceOutcomesAssociated2020 |
+| Side room delay | Uniform | $a=0.01, b=7$ | Mean delay (in days) between infection and eligible to transfer to next available side room |
+| Mean toilet frequenting rate | Uniform | $a=0.5,b=5$ | Per day; used as \lambda parameter for Poisson distribution |  |
+| Mean toilet cleaning rate | Uniform | $a=0.5, b=3$ | Per day; used as \lambda parameter for Poisson distribution |  |
+| Toilet contamination effect | Uniform | $a=0.01,b=0.99$ | Contamination impact by infected/colonised patients through toilet use |  |
+| Toilet cleaning effect | Uniform | $a=0.01, b=0.99$ | Impact of toilet cleaning on contamination |  |
+
+: Prior distributions or constants used for model inputs. {#tbl-priors}
+
+Firstly, $n$ independent random samples were drawn from the parameter prior distributions giving $\theta_1,\theta_2,\ldots,\theta_n$. Next, each sample parameter point $\theta_i$ was used as an input to the \acr{ABM}, generating a total of $n$ simulated datasets. The number of daily cases of nosocomial \acr{CDI} were extracted from the model outputs, and converted to a time series of nosocomial \acr{CDI} cases per 1000 patient days for each month, generating simulated summary statistics $S_1,S_2,\ldots,S_n$. Since each simulation starts with an empty hospital that is gradually populated with patient admissions, results from the first 31 simulated days were discarded to ensure that the model had reached a steady state.
+
+For each $\theta_i$, its simulated summary statistic $S_i$ was compared to the summary statistic generated from the observed data, $S_\text{obs}$, and $\theta_i$ was was accepted as a sample from the approximate posterior distribution if:
+
+$$
+d(S_i, S_\text{obs}) \leq \epsilon,
+$$
+
+where:
+
+-   $d$ is the Euclidean distance between $S_i$ and $S_\text{obs}$, and
+
+-   $\epsilon$ is the tolerance.
+
+Otherwise, $\theta_i$ was rejected, giving a set of accepted parameters $\{\hat{\theta}_1, \ldots, \hat{\theta}_m\}$, where $m \leq n$. The parameter samples---i.e., $\hat{\theta}$ that generated the accepted simulations were used to approximate a posterior distribution. $\epsilon$ was set such that the acceptance rate was approximately 2.5%, which was deemed to be a good compromise between the accuracy of the posterior distribution and the computational cost of running the simulations.
+
+The model was calibrated in two stages. First, \acr{ABC} was applied to the pre-outbreak data to obtain posterior parameter distributions that reproduced baseline infection levels. These posteriors were then used as starting point for a second calibration phase that covered the entire data, including the outbreak period and the introduction of enhanced IPC measures (October 2004--May 2005 in the observed dataset) [@salgadoAnalysisOutbreakClostridium2009]. To represent the onset of the outbreak, key parameters were shifted at a defined time point, with priors chosen to allow increased transmission or infection pressure (informed by the earlier posteriors). Later, at another defined time point, parameters were shifted again to reflect enhanced \acr{IPC} measures, with priors chosen to reduce transmission, reversing the outbreak-related changes. This calibration approach reduced the total number of required simulations, and therefore the computational cost, by identifying baseline parameters before simulating the more complex outbreak dynamics.
+
+As a posterior predictive check, the posterior parameter distributions were used to simulate outbreak scenarios that were compared to the observed rates. A set of parameters was generated by sampling with replacement from $\hat{\theta}$, and used as an input to the simulation model. The results of these simulations were compared to the observed data to assess how well the calibrated model could reproduce the observed outbreak dynamics.
+
+Due to the inherent stochasticity within the \acr{ABM}, all calibration and simulation runs were aggregated over multiple runs (each using a random seed), and the mean rates of infection were calculated.
+
+## Sensitivity analysis {#sec-sens-analysis}
+
+To assess the sensitivity of the calibrated \acr{ABM} to changes in infection control practice, a single-parameter local sensitivity analysis was performed [@railsback232SensitivityAnalysis2019]. Four parameters that reflected modifiable infection control practices were chosen for the sensitivity analysis: 1) antimicrobial prescription rates; 2) the mean delay between patient infection and transfer to a side room; 3) toilet cleaning rate; and 4) toilet cleaning effect. To conduct the sensitivity analysis, all the parameters except the one of interest were fixed at the posterior mean values. Next, the parameter of interest was varied through a range of values, and used as an input to the simulation model at each value. The output metric was the number of cases of hospital-acquired infection within the outbreak period.
+
+## Software implementation
+
+The \acr{ABM} was implemented in NetLogo v6.2.2 [@wilenskyu.NetLogo1999]. The R package `nlrx` was used to execute simulations and transfer output data for analysis in R [@rcoreteamLanguageEnvironmentStatistical2022; @saleckerNlrxPackageNextgeneration2019].
+
+# References

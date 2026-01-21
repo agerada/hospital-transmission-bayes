@@ -1,0 +1,10 @@
+format:
+  pdf: default
+  docx: default
+
+  # (other formats)
+  # pdf: default
+
+bibliography: references.bib
+
+keep-tex: true

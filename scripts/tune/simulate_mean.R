@@ -1,0 +1,84 @@
+sim_days <- (365 * 7) + 30
+
+# outbreak_control_model <- "salgado.nlogo"
+
+nl <- nl(nlversion = nl_version,
+         nlpath = netlogo_path,
+         modelpath = model_path,
+         jvmmem = 1024)
+
+consts <- list("wards-total" = wards_total,
+               "bedspaces-per-ward" = bedspaces_per_ward,
+               "antibiotic-prescription-rate" = antibiotic_prescription_rate, # Vesporten 2018
+               "admission-days" = admission_days,
+               "bay-proportion" = bay_proportion)
+
+# set outbreak and control
+consts <- c(consts, "outbreak?" = TRUE, "infection-control?" = TRUE)
+
+estimated_consts_mean <- abc_params_outbreak_control$unadj.values %>%
+  apply(., 2, mean)
+
+estimated_consts_fixed <- c(estimated_consts_mean, consts)
+
+nl@experiment <- experiment(expname = "mean_sims",
+                            outpath = out_path,
+                            repetition = 1,
+                            tickmetrics = "true",
+                            idsetup = "setup",
+                            idgo = "go",
+                            runtime = sim_days,
+                            metrics = c("total-colonised",
+                                        "total-patients-admitted",
+                                        "total-hospital-infections",
+                                        "current-community-infections",
+                                        "current-hospital-infections",
+                                        "current-inpatients",
+                                        "current-colonised"),
+                            constants = estimated_consts_fixed)
+
+nl@simdesign <- simdesign_simple(nl,
+                              nseeds = calibration_seeds)
+
+plan(future_plan, workers = num_workers)
+
+if (run_sims) {
+  mean_sims <- progressr::with_progress(
+    run_nl_all(nl))
+  write_rds(mean_sims, file.path(out_path, "mean_sims.rds"))
+}
+
+mean_sims <- read_rds(file.path(out_path, "mean_sims.rds"))
+
+mean_sims_bak <- mean_sims
+mean_sims <- mean_sims %>% 
+  filter(`[step]` > 31)
+
+mean_sims <- mean_sims %>% 
+  group_by(`random-seed`, `siminputrow`) %>% 
+  mutate(date_sim = seq(from = ymd("2002-01-01"),
+                        by = "1 day",
+                        length.out = n()))
+
+mean_sims_rates <- mean_sims %>% 
+  mutate(year = year(date_sim), month = month(date_sim)) %>% 
+  group_by(`random-seed`, `siminputrow`, year, month) %>% 
+  summarise(rate = (max(`total-hospital-infections`) - min(`total-hospital-infections`)) / sum(`current-inpatients`) * 1000) %>% 
+  mutate(date_sim = ymd(paste0(year, "-", month, "-01"))) %>% 
+  ungroup() %>% 
+  dplyr::select(!c(year, month))
+
+
+mean_sims_rates %>% 
+  pivot_wider(names_from = date_sim, values_from = rate) %>% 
+  #slice_sample(n=10) %>% 
+  pivot_longer(cols = !c(`random-seed`, `siminputrow`), names_to = "date_sim", values_to = "rate") %>% 
+  mutate(date_sim = ymd(date_sim)) %>% 
+  group_by(`random-seed`, date_sim) %>%
+  summarise(rate = mean(rate)) %>%
+  ggplot(aes(x = date_sim,
+             y = rate,
+             color = factor(`random-seed`))) +
+  geom_line() +
+  geom_line(data = long_observed_ss, aes(x = x, y = rates), color = "black") +
+  guides(color="none")

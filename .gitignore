@@ -1,3 +1,11 @@
+# Project specific
+out/
+.DS_Store
+*tmp.nlogo
+paper/**/*.pdf
+paper/**/*.docx
+slurm_out/
+
 # History files
 .Rhistory
 .Rapp.history
@@ -5,6 +13,7 @@
 # Session Data files
 .RData
 .RDataTmp
+*.Rdata
 
 # User-specific files
 .Ruserdata
@@ -47,3 +56,5 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+/out_lhs
+/out_random

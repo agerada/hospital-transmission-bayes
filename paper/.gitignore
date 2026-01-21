@@ -1,0 +1,5 @@
+/.quarto/
+paper_files
+paper.tex
+
+**/*.quarto_ipynb
