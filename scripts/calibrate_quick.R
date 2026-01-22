@@ -26,18 +26,11 @@ bedspaces_per_ward <- 4
 # set random seed for reproducibility
 set.seed(42)
 
-
-netlogo_path <- here::here("netlogo")
+netlogo_path <- Sys.getenv("NETLOGO_HOME", here::here("netlogo"))
 nl_version <- "6.2.2"
 
-if (!dir.exists(netlogo_path)) {
-    nlrx::download_netlogo(version = nl_version,
-                             to = netlogo_path,
-                             extract = TRUE)
-}
-
 model_path <- here::here("models", "hospital_transmission.nlogo")
-out_path <- here::here("out")  # Separate output directory for quick tests
+out_path <- here::here("out")
 data_path <- here::here("data")
 
 # previous versions of this script used this option to skip running the

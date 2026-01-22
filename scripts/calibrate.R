@@ -10,7 +10,7 @@ options(progressr.enable=TRUE)
 source(here::here("scripts", "helpers", "simdesign_random_helpers.R"))
 
 # optionally, set jvm here:
-Sys.setenv(JAVA_HOME = "/usr/lib/jvm/java-1.17.0-openjdk-amd64/")
+# Sys.setenv(JAVA_HOME = "/usr/lib/jvm/java-1.17.0-openjdk-amd64/")
 
 # set parameter sampling functions
 simdesign_fn <- simdesign_random
@@ -26,9 +26,9 @@ bedspaces_per_ward <- 18
 # set random seed for reproducibility
 set.seed(42)
 
-
-netlogo_path <- "~/netlogo_6.2.2"
+netlogo_path <- Sys.getenv("NETLOGO_HOME", here::here("netlogo"))
 nl_version <- "6.2.2"
+
 model_path <- here::here("models", "hospital_transmission.nlogo")
 out_path <- here::here("out")
 data_path <- here::here("data")
