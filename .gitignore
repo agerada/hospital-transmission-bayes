@@ -4,6 +4,7 @@
 .DS_Store
 *tmp.nlogo
 /slurm_out/
+/netlogo/
 
 # History files
 .Rhistory
