@@ -858,7 +858,7 @@ toilet-contamination-effect
 toilet-contamination-effect
 0
 1
-0.302
+0.102
 0.05
 1
 NIL
@@ -888,7 +888,7 @@ toilet-cleaning-effect
 toilet-cleaning-effect
 0
 1
-0.825
+0.793
 0.05
 1
 NIL
@@ -903,7 +903,7 @@ toilet-cleaning-rate
 toilet-cleaning-rate
 0
 24
-2.878
+2.371
 0.1
 1
 NIL
@@ -918,7 +918,7 @@ toilet-frequenting-rate
 toilet-frequenting-rate
 0
 24
-1.4
+0.836
 0.1
 1
 NIL
@@ -933,7 +933,7 @@ community-colonisation-rate
 community-colonisation-rate
 0
 1
-0.07
+0.03
 0.01
 1
 NIL
@@ -1012,7 +1012,7 @@ antibiotic-effect
 antibiotic-effect
 0
 100
-1.544
+1.575
 0.1
 1
 RR/OR
@@ -1073,7 +1073,7 @@ outbreak-start
 outbreak-start
 1
 10000
-1041.987
+1029.962
 1
 1
 ticks
@@ -1088,7 +1088,7 @@ o-toilet-frequenting-rate
 o-toilet-frequenting-rate
 0.1
 24
-1.239
+1.281
 0.1
 1
 NIL
@@ -1103,7 +1103,7 @@ o-toilet-contamination-effect
 o-toilet-contamination-effect
 0.01
 1
-0.302
+0.215
 0.01
 1
 NIL
@@ -1118,7 +1118,7 @@ o-toilet-cleaning-effect
 o-toilet-cleaning-effect
 0.01
 1
-0.431
+0.442
 0.01
 1
 NIL
@@ -1133,7 +1133,7 @@ o-toilet-cleaning-rate
 o-toilet-cleaning-rate
 0
 24
-1.179
+1.566
 0.1
 1
 NIL
@@ -1148,7 +1148,7 @@ o-community-colonisation-rate
 o-community-colonisation-rate
 0.01
 1
-0.43
+0.055
 0.01
 1
 NIL
@@ -1163,7 +1163,7 @@ o-antibiotic-prescription-rate
 o-antibiotic-prescription-rate
 0.01
 1
-0.771
+0.75
 0.01
 1
 NIL
@@ -1204,7 +1204,7 @@ c-toilet-cleaning-effect
 c-toilet-cleaning-effect
 0.01
 1
-0.825
+0.856
 0.01
 1
 NIL
@@ -1219,7 +1219,7 @@ c-toilet-cleaning-rate
 c-toilet-cleaning-rate
 0
 12
-2.878
+3.36
 0.1
 1
 NIL
@@ -1234,7 +1234,7 @@ c-antibiotic-prescription-rate
 c-antibiotic-prescription-rate
 0.01
 1
-0.289
+0.228
 0.01
 1
 NIL
@@ -1249,7 +1249,7 @@ outbreak-end
 outbreak-end
 1
 10000
-1234.329
+1246.789
 1
 1
 NIL
@@ -1264,7 +1264,7 @@ control-end
 control-end
 1
 10000
-1338.933
+1335.573
 1
 1
 NIL
@@ -1296,7 +1296,7 @@ random-colonisation
 random-colonisation
 0
 1000
-6.002
+6.912
 0.1
 1
 cases per 10,000 bed days
@@ -1385,7 +1385,7 @@ side-room-delay-mean
 side-room-delay-mean
 0
 10
-0.2
+1.995
 0.1
 1
 NIL
@@ -1400,7 +1400,7 @@ c-side-room-delay-mean
 c-side-room-delay-mean
 0
 10
-7.8
+2.963
 0.1
 1
 NIL
@@ -1415,7 +1415,7 @@ o-side-room-delay-mean
 o-side-room-delay-mean
 0
 10
-9.4
+3.19
 0.1
 1
 NIL
@@ -1507,10 +1507,6 @@ Next, there are many parameters that can be changed which can affect transmissio
 
 Assuming that the parameters are left at these defaults, now just press "Go" to run the simulation. Observe that patients are admitted, use toilets, and may get colonised/infected. Green patients are uninfected, red are infected. Eventually, once the simualtion reaches the outbreak time-point, the number of cases (observe the two plots) increase. The outbreak is then recognised and enhanced infection control measures are implemented to control it, bringing rates back down to baseline. 
 
-## Paremeter details
-
-* _random-colonisation_: Daneman, 2015 [2] -- Rate of 6.2 cases per 10,000 patient bed days for _C. difficile_.
-
 ## Things to explore
 
 Try changing the different parameters to look at the impact on transmission. Start by turning off both the "outbreak?" and "infection-control?" switches so that no outbreak takes place. Run the simulation using the default settings. While the simulation is running, try changing different paramaters to pusuh the rate of infection up. Which parameters seem to have the most impact? 
@@ -1548,8 +1544,6 @@ An example of this format is provided with the model.
 ## References
 
 1. Salgado CD, Mauldin PD, Fogle PJ, Bosso JA. Analysis of an outbreak of Clostridium difficile infection controlled with enhanced infection control measures. American Journal of Infection Control. 2009 Aug;37(6):458–64. 
-
-2. Daneman N, Guttmann A, Wang X, Ma X, Gibson D, Stukel T. The association of hospital prevention processes and patient risk factors with the risk of Clostridium difficile infection: a population-based cohort study. BMJ Qual Saf. 2015 Jul;24(7):435–43. 
 @#$#@#$#@
 default
 true
