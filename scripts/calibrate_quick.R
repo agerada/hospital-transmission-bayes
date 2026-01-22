@@ -17,7 +17,7 @@ simdesign_fn <- simdesign_random
 
 # set future plan (multicore or multisession) and workers
 future_plan <- "multicore"
-num_workers <- availableCores() - 1
+num_workers <- availableCores() - 2
 
 # set ward design - SMALL HOSPITAL FOR QUICK TESTING
 wards_total <- 4
@@ -60,10 +60,10 @@ if (!dir.exists(out_path)) {
 
 ##============== pre-outbreak =============##
 
-calibration_samples <- 10  # REDUCED FOR QUICK TESTING
+calibration_samples <- 50  # REDUCED FOR QUICK TESTING (need enough for ABC to accept some)
 # calibration_samples <- availableCores() * 8
 calibration_seeds <- 1  # REDUCED FOR QUICK TESTING
-abc_tol <- 0.05
+abc_tol <- 0.2  # INCREASED FOR QUICK TESTING (to accept ~10 samples)
 
 message("Running pre-outbreak calibration")
 message(glue::glue("Calibration samples: {calibration_samples},
@@ -95,10 +95,10 @@ source(here::here("scripts", "tune", "pre_outbreak.R"))
 
 ##=========== use variables for pre-outbreak params as well ============##
 
-calibration_samples <- 20  # REDUCED FOR QUICK TESTING
+calibration_samples <- 50  # REDUCED FOR QUICK TESTING (need enough for ABC to accept some)
 # calibration_samples <- availableCores() * 10
 calibration_seeds <- 1  # REDUCED FOR QUICK TESTING
-abc_tol <- 0.025
+abc_tol <- 0.2  # INCREASED FOR QUICK TESTING (to accept ~10 samples)
 
 upper_bound <- "mean" # mean, min, or max (of pre-outbreak priors)
 upper_bound_scale <- 1 # scale the upper bound by this factor
