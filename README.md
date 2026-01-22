@@ -3,7 +3,7 @@
 This repository contains the data, models, and code required to reproduce the
 results presented in the above manuscript.
 
-# Quickstart
+## Quickstart
 
 1. Clone this repository:
 
@@ -46,7 +46,7 @@ as in the manuscript (which uses `scripts/calibrate.R`).
 The quickest way to run the calibration is through the provided Docker
 image.
 
-# Requirements
+## Requirements
 
 The project `R` requirements are managed using `renv`. To install the required
 packages, run the following commands in an `R` console:
@@ -60,13 +60,13 @@ renv::restore()
 version `6.2.2`; therefore, this is the recommended version to use. Download
 for your platform from: https://www.netlogo.org/downloads/archive/6.2.2/.
 
-## Mac
+### Mac
 
 This project was originally developed on mac. 
 Some packages needed to be built from source, so it is best to first install
 `gfortran` and `XQuartz`.
 
-## Conda requirements
+### Conda requirements
 
 Running though conda is not necessary, but may be required on some HPC systems.
 Here are some of the required packages (more may be required depending on the
@@ -81,16 +81,16 @@ r-sf
 r-igraph
 ```
 
-# Docker Setup
+## Docker Setup
 
 A Docker configuration is provided to run the calibration in a containerized environment with all dependencies pre-installed.
 
-## Prerequisites
+### Prerequisites
 
 - Docker installed on your system
 - At least 4GB of available RAM (recommended)
 
-## Quick Start
+### Quick Start
 
 1. **Run quick calibration (script is provided as an argument):**
    ```bash
@@ -102,7 +102,7 @@ A Docker configuration is provided to run the calibration in a containerized env
    ./run_calibration.sh scripts/calibrate.R
    ```
 
-## Manual Docker Commands
+### Manual Docker Commands
 
 1. **Build the Docker image:**
    ```bash
@@ -132,9 +132,9 @@ The outputs are the following:
 - calibrate.RData: R workspace image with calibration results (used in `paper/paper.qmd` for analysis and figures)
 - individual experiments `.rds` files.
 
-# Render
+## Render
 
-## Poster
+### Poster
 
 The poster uses a `quarto` poster template, which is included. To render:
 
@@ -142,7 +142,7 @@ The poster uses a `quarto` poster template, which is included. To render:
 quarto render poster/poster.qmd
 ```
 
-## Paper
+### Paper
 
 The paper currently uses a custom fork of `acronyms` and the `authors-block`
 `quarto` extensions, which are included. To render as pdf:
@@ -157,7 +157,7 @@ To render as docx:
 quarto render paper/paper.qmd --to docx
 ```
 
-# Model calibration
+## Model calibration
 
 On a high-level, the calibration process uses the following two step approach:
 
@@ -177,5 +177,16 @@ parameters
 * `scripts/tune/outbreak_and_control.R` kept the pre-outbreak parameters fixed
 and focused on calibrating the outbreak and IPC periods
 
-# Calibration tips
+## Citation
 
+To follow.
+
+## Contact
+
+[Dr Alessandro Gerada](mailto:alessandro.gerada@liverpool.ac.uk)
+
+## Licence
+
+This repository and its contents are licensed under the **Creative Commons
+Attribution 4.0 International (CC BY 4.0)** license. See the `LICENSE` file for more
+details.
