@@ -1026,12 +1026,12 @@ where:
 
     $$
     T_i(t) = \begin{cases}
-      m & \text{if patient $i$ on antimicrobial therapy at time $t$} \\
-      1 & \text{otherwise, and}
+      m & \text{if patient $i$ is on antimicrobial therapy at time $t$} \\
+      1 & \text{otherwise,}
     \end{cases}
     $$
 
--   $m$ is the increased (or decreased) relative risk of infection due to antimicrobial therapy, where $m>0$.
+-   and $m$ is the increased (or decreased) relative risk of infection due to antimicrobial therapy, where $m>0$.
 
 In the \acr{ABM} implementation, Bernoulli trials were conducted to determine if a patient became infected at each time step $t$:
 
@@ -1080,7 +1080,7 @@ Priors were extracted from existing literature; flat priors with limits were use
 
 Firstly, $n$ independent random samples were drawn from the parameter prior distributions giving $\theta_1,\theta_2,\ldots,\theta_n$. Next, each sample parameter point $\theta_i$ was used as an input to the \acr{ABM}, generating a total of $n$ simulated datasets. The number of daily cases of nosocomial \acr{CDI} were extracted from the model outputs, and converted to a time series of nosocomial \acr{CDI} cases per 1000 patient days for each month, generating simulated summary statistics $S_1,S_2,\ldots,S_n$. Since each simulation starts with an empty hospital that is gradually populated with patient admissions, results from the first 31 simulated days were discarded to ensure that the model had reached a steady state.
 
-For each $\theta_i$, its simulated summary statistic $S_i$ was compared to the summary statistic generated from the observed data, $S_\text{obs}$, and $\theta_i$ was was accepted as a sample from the approximate posterior distribution if:
+For each $\theta_i$, its simulated summary statistic $S_i$ was compared to the summary statistic generated from the observed data, $S_\text{obs}$, and $\theta_i$ was accepted as a sample from the approximate posterior distribution if:
 
 $$
 d(S_i, S_\text{obs}) \leq \epsilon,
