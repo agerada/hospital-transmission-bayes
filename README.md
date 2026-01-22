@@ -3,7 +3,7 @@
 This repository contains the data, models, and code required to reproduce the
 results presented in the above manuscript.
 
-## Quickstart
+## Quickstart
 
 1. Clone this repository:
 
@@ -134,7 +134,7 @@ The outputs are the following:
 
 ## Render
 
-### Poster
+### Poster
 
 The poster uses a `quarto` poster template, which is included. To render:
 
@@ -185,7 +185,7 @@ To follow.
 
 [Dr Alessandro Gerada](mailto:alessandro.gerada@liverpool.ac.uk)
 
-## Licence
+## Licence
 
 This repository and its contents are licensed under the **Creative Commons
 Attribution 4.0 International (CC BY 4.0)** license. See the `LICENSE` file for more
