@@ -47,7 +47,7 @@ is to load NetLogo and open the model file located at
 A set of parameters is provided to get started (these are the retained rejection
 sampling ABC parameter sets as described in the manuscript). To load these,
 from the `Interface` tab, click on `Load Parameter` (bottom left) and select the
-file located at `default_params.csv`. [^1]
+file located at `models/default_params.csv`. [^1]
 
 [^1]: The model uses the mean value of the posterior distributions for each
 parameter.
