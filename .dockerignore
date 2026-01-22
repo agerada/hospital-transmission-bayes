@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# R environment and cache
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+renv/library/
+renv/staging/
+*.Rproj
+
+# Output directories (will be mounted as volumes)
+out/
+out_lhs/
+out_random/
+out_quick/
+
+# NetLogo (downloaded during build)
+netlogo/
+
+# Documentation and temporary files
+*.md
+!README.md
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Docker files (not needed in container)
+Dockerfile
+docker-compose.yml
+.dockerignore

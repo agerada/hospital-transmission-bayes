@@ -1,0 +1,18 @@
+services:
+  calibration:
+    build: .
+    working_dir: /app
+    volumes:
+      # Mount project code at runtime (image contains only dependencies)
+      - ./:/app:ro
+      # Writable output directories
+      - ./out:/app/out
+    environment:
+      - R_MAX_NUM_DLLS=150
+      - NETLOGO_HOME=/opt/netlogo
+      - JAVA_HOME=/usr/lib/jvm/default-java
+      - RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+    entrypoint: ["Rscript", "--vanilla"]
+    # Usage:
+    #   docker-compose run --rm calibration scripts/calibrate_quick.R
+    #   docker-compose run --rm calibration scripts/calibrate.R
