@@ -44,7 +44,23 @@ dependencies are correctly installed. It will **not** produce the same results
 as in the manuscript (which uses `scripts/calibrate.R`).
 
 The quickest way to run the calibration is through the provided Docker
-image.
+image, which contains the required dependencies, including NetLogo:
+
+```bash
+docker pull ghcr.io/agerada/hospital-transmission-bayes:latest
+```
+
+To run the quick calibration:
+
+```bash
+docker-compose run --rm calibration scripts/calibrate_quick.R
+```
+
+To run the full calibration:
+
+```bash
+docker-compose run --rm calibration scripts/calibrate.R
+```
 
 ## Requirements
 
@@ -58,7 +74,9 @@ renv::restore()
 
 `NetLogo` is required to run the simulation model. The model was developed using
 version `6.2.2`; therefore, this is the recommended version to use. Download
-for your platform from: https://www.netlogo.org/downloads/archive/6.2.2/.
+for your platform from: https://www.netlogo.org/downloads/archive/6.2.2/. Place
+the extracted folder in `netlogo/` (or elsewhere, and set the path in the
+calibration scripts).
 
 ### Mac
 
@@ -80,49 +98,6 @@ r-raster
 r-sf 
 r-igraph
 ```
-
-## Docker Setup
-
-A Docker configuration is provided to run the calibration in a containerized environment with all dependencies pre-installed.
-
-### Prerequisites
-
-- Docker installed on your system
-- At least 4GB of available RAM (recommended)
-
-### Quick Start
-
-1. **Run quick calibration (script is provided as an argument):**
-   ```bash
-   ./run_calibration.sh scripts/calibrate_quick.R
-   ```
-
-2. **Run full calibration:**
-   ```bash
-   ./run_calibration.sh scripts/calibrate.R
-   ```
-
-### Manual Docker Commands
-
-1. **Build the Docker image:**
-   ```bash
-   docker-compose build
-   ```
-
-2. **Run any calibration script by passing the script path as the container argument:**
-   ```bash
-   # quick
-   docker-compose run --rm calibration scripts/calibrate_quick.R
-
-   # full
-   docker-compose run --rm calibration scripts/calibrate.R
-   ```
-
-Notes:
-- The Docker image contains only system and R package dependencies (NetLogo is installed in the image).
-- Project files (including `scripts/`) are mounted into the container at runtime, so edits to `scripts/*.R` in your repository are reflected immediately when you run the container (no need to rebuild the image for code changes).
-- The container disables `renv` autoloader to avoid attempts to write into the mounted project; if you need to change package versions, update `renv.lock` and rebuild the image with `docker-compose build`.
-- A compatibility symlink for Java is provided inside the image to support NetLogo headless scripts that expect `/usr/lib/jvm/java-1.17.0-openjdk-amd64`.
 
 ## Output
 
