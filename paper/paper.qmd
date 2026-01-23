@@ -562,4 +562,8 @@ Data and software code are available at:
 
 https://github.com/agerada/hospital-transmission-bayes
 
+## Funding
+
+This research was funded, in part, by the Wellcome Trust [grant ref: 226691/Z/22/Z] and UKRI [grant ref: 2599501]. For the purpose of Open Access, the author has applied a Creative Commons Attribution (CC-BY) license to any Author Accepted Manuscript version arising.
+
 # References
