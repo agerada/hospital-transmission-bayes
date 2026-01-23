@@ -46,6 +46,9 @@ authors:
     orcid: 0000-0002-6743-4271
     email: alessandro.gerada@liverpool.ac.uk
     corresponding: true
+  - name: Yinzheng Zhong
+    affiliations:
+      - ref: APT
   - name: Charlotte Brookefield
     affiliations:
       - ref: APT
@@ -257,10 +260,13 @@ general_params <- abc_params_outbreak_control$unadj.values %>%
   # manually set colors
   scale_fill_manual(values = c("Baseline" = "#66c2a5", "Outbreak" = "#fc8d62", "Control" = "#8da0cb")) +
   scale_linetype_manual(values = c("Baseline" = "solid", "Outbreak" = "dashed", "Control" = "dotted")) +
-  # remove gridlines
-  scale_x_continuous(labels = scales::label_number(accuracy = 0.001)) +
+  # remove gridlines and increase spacing between facet panels
+  scale_x_continuous(labels = scales::label_number(accuracy = 0.1)) +
   theme(panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank())
+        panel.grid.minor = element_blank(),
+        # increase both x and y panel spacing so top grid facets are further apart
+        panel.spacing = grid::unit(2, "lines"),
+        panel.spacing.y = grid::unit(1.5, "lines"))
 
 toilet_params <- abc_params_outbreak_control$unadj.values %>% 
   as_tibble %>% 
@@ -293,7 +299,7 @@ toilet_params <- abc_params_outbreak_control$unadj.values %>%
   scale_fill_manual(values = c("Baseline" = "#66c2a5", "Outbreak" = "#fc8d62", "Control" = "#8da0cb")) +
   scale_linetype_manual(values = c("Baseline" = "solid", "Outbreak" = "dashed", "Control" = "dotted")) +
   # remove gridlines
-  scale_x_continuous(labels = scales::label_number(accuracy = 0.001)) +
+  scale_x_continuous(labels = scales::label_number(accuracy = 0.1)) +
   theme(panel.grid.major = element_blank(),
     panel.grid.minor = element_blank())
 
