@@ -2,6 +2,11 @@
 title: "Simulating interventions to prevent gastro-intestinal transmission of _Clostridioides difficile_ and antimicrobial-resistant bacteria in healthcare settings: a model calibration study"
 bibliography: references.bib
 csl: https://raw.githubusercontent.com/citation-style-language/styles/refs/heads/master/elsevier-vancouver.csl
+header-includes:
+  - "\\usepackage{setspace}"
+  - "\\usepackage{lineno}"
+  - "\\AtBeginDocument{\\doublespacing}"
+  - "\\AtBeginDocument{\\linenumbers}"
 filters:
   - acronyms
   - authors-block
@@ -73,7 +78,7 @@ authors:
       - ref: LCL
 affiliations:
   - id: APT
-    name: Antimicrobial Pharmacodynamics and Therapeutics, Department of Clinical Pharmacology and Therapeutics, Institute of Systems, Molecular & Integrative Biology, University of Liverpool
+    name: Antimicrobial Pharmacodynamics and Therapeutics, Department of Pharmacology and Therapeutics, Institute of Systems, Molecular & Integrative Biology, University of Liverpool
   - id: LCL
     name: Department of Infection and Immunity, Liverpool Clinical Laboratories, Clinical Support Services Building (CSSB), Liverpool University Hospitals NHS Foundation Trust
   - id: SOE
@@ -88,6 +93,24 @@ abstract: |
 # here::i_am("paper/index.qmd")
 run_sims <- FALSE
 set.seed(42)
+
+# Use a high-quality graphics device and higher DPI for Word output.
+# Prefer 'ragg' when available for better antialiasing; fall back to base PNG.
+if (requireNamespace("ragg", quietly = TRUE)) {
+  knitr::opts_chunk$set(dev = "ragg_png")
+} else {
+  knitr::opts_chunk$set(dev = "png")
+}
+
+# Set default chunk plotting options to produce high-resolution images suitable
+# for docx rendering. Individual chunks can still override these values.
+knitr::opts_chunk$set(
+  dpi = 300,
+  fig.retina = 2,
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center"
+)
 
 # I could not get R code to run before, until I did this:
 # https://github.com/brentthorne/posterdown/issues/42
@@ -562,8 +585,12 @@ Data and software code are available at:
 
 https://github.com/agerada/hospital-transmission-bayes
 
-## Funding
+## Funding
 
 This research was funded, in part, by the Wellcome Trust [grant ref: 226691/Z/22/Z] and UKRI [grant ref: 2599501]. For the purpose of Open Access, the author has applied a Creative Commons Attribution (CC-BY) license to any Author Accepted Manuscript version arising.
+
+## Author contributions
+
+A.G. study conception, data analysis, software development, manuscript writing; Y.Z. software development, manuscript writing; C.B., A.H., N.R., C.R. manuscript writing; P.G. data analysis, manuscript writing; W.H. study conception, manuscript writing.
 
 # References
