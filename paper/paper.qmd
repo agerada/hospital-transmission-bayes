@@ -585,11 +585,15 @@ Although \acrs{ABM} have been shown to be useful for simulating and modelling in
 
 In conclusion, the \acr{ABM} described here can simulate outbreaks of infection in a hospital setting, and estimate the impact of different infection control interventions on the number of nosocomial infections. Although the model was calibrated to a _C. difficile_ outbreak, it can be adapted for use in other pathogens that are transmitted through the faecal-oral route under antimicrobial selective pressure, such as vancomycin-resistant _Enterococci_ and extended-spectrum beta-lactamase-producing Enterobacterales.
 
-## Funding
+# Conflicts of interest statement
+
+WH holds or has recently held research grants with UKRI, Wellcome, F2G, Global Antibiotic Research and Development Partnership (GARDP). He is (or has recently been) a consultant for GSK, and Basilea. He was a member of the Specialist Advisory Committee for GARDP (2020–2023), a member of the British Society for Antimicrobial Chemotherapy (BSAC) Breakpoint Committee (2020–2023), a member of Health Technology Appraisal (HTA) Prioritisation Committee for Hospital Care (2022–2024) and was the Specialty National Co-lead for Infection for the National Institute of Health Research (NIHR) (2020-2024). AH has previously consulted for Pfizer in a personal capacity and has previously received funding from Pfizer for a public and practitioner engagement project. The other authors do not have a competing interest to declare.
+
+# Funding statement
 
 This research was funded, in part, by the Wellcome Trust [grant ref: 226691/Z/22/Z] and UKRI [grant ref: 2599501]. For the purpose of Open Access, the author has applied a Creative Commons Attribution (CC-BY) license to any Author Accepted Manuscript version arising.
 
-## Author contributions
+# Author contributions
 
 A.G. study conception, data analysis, software development, manuscript writing; Y.Z. software development, manuscript writing; C.B., A.H., N.R., C.R. manuscript writing; P.G. data analysis, manuscript writing; W.H. study conception, manuscript writing.
 
