@@ -406,6 +406,7 @@ general_params <- abc_params_outbreak_control$unadj.values %>%
   dplyr::select(-`outbreak-start`, -`outbreak-end`, -`control-end`,
                 -`antibiotic-effect`,
                 -`random-colonisation`) %>% 
+  dplyr::rename_with(~str_replace_all(., "antibiotic", "antimicrobial")) %>%
   dplyr::select(!contains("toilet")) %>% 
   pivot_longer(cols=everything()) %>%
   mutate(type = case_when(
