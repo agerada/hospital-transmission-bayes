@@ -335,7 +335,7 @@ c_toilet_clean_rate <- round(mean(posteriors[, "c-toilet-cleaning-rate"]), 2)
 After calibrating the \acr{ABM} using \acr{ABC}, three groups of parameters were produced: 1) baseline parameters, which generated rates of infection during non-outbreak settings; 2) outbreak parameters, which led to the increased transmission observed during the outbreak period; and 3) control parameters, which reflect enhanced infection control practice that led to outbreak control. A summary of the posterior estimates of the parameters (reported as the median and interquartile range of the parameters from the rejection \acr{ABC}) is shown in @tbl-posteriors. The densities of the posterior parameter distributions are shown in @fig-posterior-densities. The posterior distributions of the parameters were consistent with the expected changes in the parameters during the outbreak and control periods (e.g., the toilet cleaning rate changed from `r b_toilet_clean_rate` to `r o_toilet_clean_rate`, and to `r c_toilet_clean_rate` (times per day) during the baseline, outbreak, and control periods respectively).
 
 ```{r tbl-posteriors, include=TRUE}
-#| tbl-cap: "Summary of parameter posteriors after calibration using approximate Bayesian computation."
+#| tbl-cap: "Summary of parameter posteriors after calibration using approximate Bayesian computation. Values are presented as medians, with interquartile ranges in parentheses. Where values are absent, this indicates that the parameter was not changed during that period."
 #| echo: false
 params_table <- abc_params_outbreak_control$unadj.values %>% 
   as_tibble() %>% 
